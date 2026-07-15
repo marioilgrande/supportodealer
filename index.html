@@ -356,31 +356,41 @@
             <div class="clarify-chips" id="c-portale-chips"></div>
           </div>
 
-          <!-- sotto-percorso: cliente -> chiama supporto -->
-          <div id="c-cliente" class="clarify-block">
-            <span class="tag">Assistente</span>
-            <p class="clarify-q">Volentieri! Per le verifiche su un cliente serve l'accesso al portale del supporto. Ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:</p>
-            <div class="redirect-phone mono">06 45698346</div>
-            <div class="redirect-codes mono" id="c-cliente-codes">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
-            <p class="clarify-q" style="margin-top:14px;">Dopo la chiamata sei riuscito a risolvere?</p>
-            <div class="feedback-btns">
-              <button type="button" class="fb-yes" id="cl-yes">Sì, ho risolto</button>
-              <button type="button" class="fb-no" id="cl-no">No, serve il controllo di Simone</button>
-            </div>
-          </div>
-
           <!-- feedback su una risposta data -->
           <div id="c-feedback" class="feedback-block">
             <p class="feedback-q">Ti è stato utile?</p>
             <div class="feedback-btns">
               <button type="button" class="fb-yes" id="fb-yes">Sì, grazie!</button>
-              <button type="button" class="fb-no" id="fb-no">No, ho ancora bisogno di aiuto</button>
+              <button type="button" class="fb-no" id="fb-no">No, non ho risolto</button>
             </div>
           </div>
 
-          <!-- escalation: CF + opportunity per Simone -->
+          <!-- chiama il supporto (SIS/SUB) + conferma chiamata -->
+          <div id="c-support" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q" id="c-support-msg">Per questa verifica ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:</p>
+            <div class="redirect-phone mono">06 45698346</div>
+            <div class="redirect-codes mono" id="c-support-codes">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
+            <p class="clarify-q" style="margin-top:14px;">Hai chiamato il supporto e risolto?</p>
+            <div class="feedback-btns">
+              <button type="button" class="fb-yes" id="su-yes">Sì, ho risolto</button>
+              <button type="button" class="fb-no" id="su-no">No, non ho risolto</button>
+            </div>
+          </div>
+
+          <!-- di che tipo di aiuto hai bisogno? -->
+          <div id="c-help-type" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">Va bene, ci pensa Simone. Di cosa hai bisogno?</p>
+            <div class="clarify-chips">
+              <button type="button" class="chip" id="ht-pratica">Assistenza su una pratica</button>
+              <button type="button" class="chip" id="ht-altro">Assistenza su altro</button>
+            </div>
+          </div>
+
+          <!-- escalation PRATICA: CF + opportunity per Simone -->
           <div id="c-escalate" class="client-data-block">
-            <p class="client-data-note">Va bene, faccio verificare la pratica al collega. Lasciami i dati del cliente così Simone controlla a portale:</p>
+            <p class="client-data-note">Perfetto. Lasciami i dati del cliente così Simone controlla la pratica a portale:</p>
             <label class="field">
               <span class="label-text">Codice fiscale cliente <em>obbligatorio</em></span>
               <input type="text" id="f-cf" placeholder="es. RSSMRA80A01H501U" />
@@ -395,6 +405,25 @@
             </label>
             <span class="field-hint warn" id="escalate-hint" style="display:none;">Mi servono sia il codice fiscale sia il numero opportunity, grazie.</span>
             <button type="button" class="submit-btn" id="f-escalate-submit" style="margin-top:4px;">Invia a Simone</button>
+          </div>
+
+          <!-- escalation ALTRO: richiesta di contatto -->
+          <div id="c-escalate-altro" class="client-data-block">
+            <p class="client-data-note">Nessun problema. Lasciami i tuoi riferimenti e Simone ti richiama appena possibile:</p>
+            <label class="field">
+              <span class="label-text">Nome / referente <em>obbligatorio</em></span>
+              <input type="text" id="f-referente" placeholder="es. Mario Rossi — Negozio X" />
+            </label>
+            <label class="field">
+              <span class="label-text">Telefono o email <em>obbligatorio</em></span>
+              <input type="text" id="f-contatto" placeholder="es. 333 1234567 / mario@negozio.it" />
+            </label>
+            <label class="field">
+              <span class="label-text">Di cosa hai bisogno?</span>
+              <textarea id="f-descrizione" placeholder="Descrivi brevemente la richiesta..."></textarea>
+            </label>
+            <span class="field-hint warn" id="altro-hint" style="display:none;">Mi servono nome e un recapito (telefono o email), grazie.</span>
+            <button type="button" class="submit-btn" id="f-altro-submit" style="margin-top:4px;">Invia richiesta a Simone</button>
           </div>
 
           <!-- ESITO A: risolto -->
@@ -468,18 +497,28 @@
 
   // ------- Stato conversazione -------
   let currentTicketId = null;
+  let currentCodici = null;
   const negozioEl = () => document.getElementById('f-negozio').value.trim();
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-answer','c-clarify','c-portale','c-cliente','c-feedback','c-escalate','c-final-ok','c-final-simone']
+    ['c-greeting','c-answer','c-clarify','c-portale','c-support','c-help-type','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function codiciTxt(c){
+    c = c || {};
+    return c.trovato
+      ? 'Negozio: ' + c.nome + ' / SIS-SUB: ' + (c.sisSub||'—') + ' / Agenzia: ' + (c.agenzia||'—')
+      : 'Negozio: ' + (c.nome||'—') + ' / codici SIS-SUB da verificare';
+  }
 
   async function apiPost(url, data){
     const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
     return res.json();
+  }
+  async function inviaFeedback(bastata){
+    if (currentTicketId) { try { await apiPost('/api/feedback', { ticketId: currentTicketId, bastata }); } catch {} }
   }
 
   // ------- Render delle risposte -------
@@ -488,12 +527,8 @@
     const linkEl = document.getElementById('c-answer-link');
     document.getElementById('c-answer-tag').textContent = answer.tag || 'Risposta';
     linkEl.style.display = 'none';
-    if (answer.kind === 'link'){
-      body.textContent = answer.body || 'Ecco la guida:';
-      linkEl.href = answer.url; linkEl.style.display = 'inline-flex';
-    } else {
-      body.textContent = answer.body || '';
-    }
+    if (answer.kind === 'link'){ body.textContent = answer.body || 'Ecco la guida:'; linkEl.href = answer.url; linkEl.style.display = 'inline-flex'; }
+    else { body.textContent = answer.body || ''; }
     showGreeting('Ecco qua, spero ti sia utile 👇');
     document.getElementById('c-answer').classList.add('show');
     document.getElementById('c-feedback').classList.add('show');
@@ -516,11 +551,15 @@
     document.getElementById('c-answer').classList.add('show');
     document.getElementById('c-feedback').classList.add('show');
   }
-  function renderCliente(c){
-    document.getElementById('c-cliente-codes').textContent = c.trovato
-      ? 'Negozio: ' + c.nome + ' / SIS-SUB: ' + (c.sisSub||'—') + ' / Agenzia: ' + (c.agenzia||'—')
-      : 'Negozio: ' + (c.nome||'—') + ' / codici SIS-SUB da verificare';
-    document.getElementById('c-cliente').classList.add('show');
+  const SUPPORT_MSG = {
+    disservizio: 'Per un disservizio del portale contatta subito il Dealer Support e comunica questi codici per farti identificare:',
+    cliente: 'Per le verifiche su un cliente ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:',
+    notresolved: 'Mi dispiace non esserti bastato! A questo punto ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:'
+  };
+  function renderSupport(reason){
+    document.getElementById('c-support-msg').textContent = SUPPORT_MSG[reason] || SUPPORT_MSG.cliente;
+    document.getElementById('c-support-codes').textContent = codiciTxt(currentCodici);
+    document.getElementById('c-support').classList.add('show');
   }
 
   // ------- Invio richiesta -------
@@ -537,10 +576,11 @@
     document.getElementById('confirm-panel').classList.add('show');
 
     if (!r || r.error){ showGreeting('Ops, qualcosa è andato storto. Riprova tra poco 🙏'); return; }
-    currentTicketId = r.ticketId || currentTicketId;
+    currentTicketId = r.ticketId || null;
+    currentCodici = r.codici || currentCodici;
     if (r.type === 'answer') renderAnswer(r.answer);
     else if (r.type === 'offers') renderOffers(r.offers);
-    else if (r.type === 'cliente') renderCliente(r.cliente);
+    else if (r.type === 'support') renderSupport(r.supportReason);
     else document.getElementById('c-clarify').classList.add('show');
   }
 
@@ -596,64 +636,76 @@
     });
   });
 
-  // ------- Percorso cliente: hai risolto? -------
-  document.getElementById('cl-yes').addEventListener('click', async () => {
-    if (currentTicketId) await apiPost('/api/feedback', { ticketId: currentTicketId, bastata: true });
-    hidePanels(); document.getElementById('c-final-ok').classList.add('show');
-  });
-  document.getElementById('cl-no').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate').classList.add('show'); });
-
-  // ------- Feedback -------
+  // ------- Feedback su una risposta -> se No, chiama supporto -------
   document.getElementById('fb-yes').addEventListener('click', async () => {
-    if (currentTicketId) await apiPost('/api/feedback', { ticketId: currentTicketId, bastata: true });
-    hidePanels(); document.getElementById('c-final-ok').classList.add('show');
+    await inviaFeedback(true); hidePanels(); document.getElementById('c-final-ok').classList.add('show');
   });
   document.getElementById('fb-no').addEventListener('click', async () => {
-    if (currentTicketId) await apiPost('/api/feedback', { ticketId: currentTicketId, bastata: false });
-    hidePanels();
-    showGreeting('Mi dispiace non esserti stato d\'aiuto! Dimmi meglio così ci riprovo 🙂');
-    document.getElementById('c-clarify').classList.add('show');
+    await inviaFeedback(false); hidePanels(); renderSupport('notresolved');
   });
 
-  // ------- Escalation a Simone -------
+  // ------- Dopo aver chiamato il supporto: risolto? -------
+  document.getElementById('su-yes').addEventListener('click', async () => {
+    await inviaFeedback(true); hidePanels(); document.getElementById('c-final-ok').classList.add('show');
+  });
+  document.getElementById('su-no').addEventListener('click', () => {
+    hidePanels(); document.getElementById('c-help-type').classList.add('show');
+  });
+
+  // ------- Tipo di aiuto: pratica o altro -------
+  document.getElementById('ht-pratica').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate').classList.add('show'); });
+  document.getElementById('ht-altro').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate-altro').classList.add('show'); });
+
+  function mostraSimone(codici){
+    document.getElementById('c-sis-sub').textContent = codiciTxt(codici || currentCodici);
+    hidePanels(); document.getElementById('c-final-simone').classList.add('show');
+  }
+
+  // ------- Escalation PRATICA (CF + opportunity) -------
   document.getElementById('f-escalate-submit').addEventListener('click', async () => {
     const cf = document.getElementById('f-cf').value.trim();
     const opp = document.getElementById('f-opportunity').value.trim();
     const hint = document.getElementById('escalate-hint');
     if (!cf || !opp){ hint.style.display = 'block'; return; }
     hint.style.display = 'none';
-    const btn = document.getElementById('f-escalate-submit'); btn.disabled = true; btn.textContent = 'Invio…';
-    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, cf, opportunity: opp, nota: document.getElementById('f-nota-controllo').value });
-    btn.disabled = false; btn.textContent = 'Invia a Simone';
-    if (r && r.ok){
-      document.getElementById('c-sis-sub').textContent = r.nome
-        ? 'Negozio: ' + r.nome + ' / SIS-SUB: ' + (r.sisSub||'—') + ' / Agenzia: ' + (r.agenzia||'—')
-        : '—';
-      hidePanels(); document.getElementById('c-final-simone').classList.add('show');
-    } else {
-      hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block';
-    }
+    const btn = document.getElementById('f-escalate-submit'); btn.disabled = true; const t = btn.textContent; btn.textContent = 'Invio…';
+    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'pratica', cf, opportunity: opp, nota: document.getElementById('f-nota-controllo').value });
+    btn.disabled = false; btn.textContent = t;
+    if (r && r.ok) mostraSimone(r);
+    else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
+  });
+
+  // ------- Escalation ALTRO (richiesta di contatto) -------
+  document.getElementById('f-altro-submit').addEventListener('click', async () => {
+    const referente = document.getElementById('f-referente').value.trim();
+    const contatto = document.getElementById('f-contatto').value.trim();
+    const hint = document.getElementById('altro-hint');
+    if (!referente || !contatto){ hint.style.display = 'block'; return; }
+    hint.style.display = 'none';
+    const btn = document.getElementById('f-altro-submit'); btn.disabled = true; const t = btn.textContent; btn.textContent = 'Invio…';
+    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'altro', referente, contatto, nota: document.getElementById('f-descrizione').value });
+    btn.disabled = false; btn.textContent = t;
+    if (r && r.ok) mostraSimone(r);
+    else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
   });
 
   // ------- Nuova domanda -------
   document.getElementById('f-reset').addEventListener('click', () => {
     document.getElementById('form-step').style.display = 'block';
     document.getElementById('confirm-panel').classList.remove('show');
-    ['f-negozio','f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati'].forEach(id => document.getElementById(id).value='');
+    ['f-negozio','f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati','f-referente','f-contatto','f-descrizione'].forEach(id => document.getElementById(id).value='');
     document.getElementById('allegati-hint').textContent = 'Foto o PDF della bolletta del cliente: fino a 5 file.';
     document.getElementById('allegati-hint').classList.remove('warn');
     document.getElementById('escalate-hint').style.display = 'none';
+    document.getElementById('altro-hint').style.display = 'none';
     document.getElementById('allegati-fields').classList.remove('show');
-    currentTicketId = null;
+    currentTicketId = null; currentCodici = null;
     hidePanels();
   });
 
   // ------- Login admin -------
   async function checkAdmin(){
-    try {
-      const r = await (await fetch('/api/session')).json();
-      if (r.authenticated){ enterAdmin(); }
-    } catch {}
+    try { const r = await (await fetch('/api/session')).json(); if (r.authenticated) enterAdmin(); } catch {}
   }
   function enterAdmin(){
     document.getElementById('admin-gate').style.display = 'none';
@@ -690,7 +742,7 @@
     const cols = { rosso: [], giallo: [], verde: [] };
     (data.tickets||[]).forEach(t => { (cols[t.colore] || cols.giallo).push(t); });
     const board = document.getElementById('board');
-    const colDef = [['rosso','Rosso — Urgente','sev-red'],['giallo','Giallo — Media','sev-amber'],['verde','Verde — Non urgente','sev-green']];
+    const colDef = [['rosso','Rosso — Urgente'],['giallo','Giallo — Media'],['verde','Verde — Non urgente']];
     board.innerHTML = colDef.map(([key,label]) => {
       const items = cols[key];
       const cards = items.map(t => ticketCard(t, key)).join('') || '<p style="color:var(--ink-soft);font-size:.85rem;padding:4px">Nessuna richiesta.</p>';
@@ -710,9 +762,8 @@
     const varMap = { rosso:'--sev-red', giallo:'--sev-amber', verde:'--sev-green' };
     const softMap = { rosso:'--sev-red-soft', giallo:'--sev-amber-soft', verde:'--sev-green-soft' };
     const [label, cls] = ESITO[t.esito] || ESITO.in_attesa;
-    const when = timeago(t.created_at);
     return `<article class="ticket" style="--stripe:var(${varMap[key]})">
-      <div class="ticket-top"><span class="ticket-store">${esc(t.negozio||'—')}</span><span class="ticket-time mono">${when}</span></div>
+      <div class="ticket-top"><span class="ticket-store">${esc(t.negozio||'—')}</span><span class="ticket-time mono">${timeago(t.created_at)}</span></div>
       <span class="ticket-cat" style="background:var(${softMap[key]}); color:var(${varMap[key]})">${esc(t.categoria)}</span>
       <p class="ticket-note">${esc(t.messaggio)}</p>
       <div class="ticket-bottom">

@@ -16,6 +16,8 @@ function localInterpret(msg) {
     return { intent: 'disservizio', procedureId: null, offerFilter: null };
   if (/avanzament|non firmati|non firmato|lun.?mer.?ven/.test(t))
     return { intent: 'avanzamento', procedureId: null, offerFilter: null };
+  if (/otp/.test(t) && /non arriv|non ricev|non gli arriv|non mi arriv|manca|aspett|non funziona/.test(t))
+    return { intent: 'otp', procedureId: null, offerFilter: null };
   const proc = matchProcedura(msg);
   if (proc) return { intent: 'portale', procedureId: proc.id, offerFilter: null };
   if (/offert|promo|sprint|flex|fix|scadenz|prezz|spread|commercializ|tariff/.test(t))
@@ -25,8 +27,8 @@ function localInterpret(msg) {
   return { intent: 'unclear', procedureId: null, offerFilter: null };
 }
 
-const COLORE = { portale: 'giallo', cliente: 'rosso', offerte: 'verde', disservizio: 'rosso', avanzamento: 'verde', unclear: 'giallo' };
-const CATEGORIA = { portale: 'Assistenza portale', cliente: 'Assistenza cliente', offerte: 'Info offerte', disservizio: 'Disservizio portale', avanzamento: 'Richiesta avanzamento', unclear: 'Da chiarire' };
+const COLORE = { portale: 'giallo', cliente: 'rosso', offerte: 'verde', disservizio: 'rosso', avanzamento: 'verde', otp: 'giallo', unclear: 'giallo' };
+const CATEGORIA = { portale: 'Assistenza portale', cliente: 'Assistenza cliente', offerte: 'Info offerte', disservizio: 'Disservizio portale', avanzamento: 'Richiesta avanzamento', otp: 'OTP non arriva', unclear: 'Da chiarire' };
 
 export default async function handler(request) {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -43,6 +45,7 @@ export default async function handler(request) {
   if (!intp || !intp.intent) intp = localInterpret(messaggio);
 
   const codici = codiciNegozio(negozioInput);
+  const codiciOut = { nome: codici.nome || negozioInput, sisSub: codici.sisSub, agenzia: codici.agenzia, trovato: codici.trovato };
   const colore = COLORE[intp.intent] || 'giallo';
   const categoria = CATEGORIA[intp.intent] || 'Da chiarire';
 
@@ -59,28 +62,25 @@ export default async function handler(request) {
       payload = { type: 'answer', answer: { kind: 'link', tag: 'Guida passo-passo', body: 'Ho la guida completa per questa procedura:', url: p.url } };
       rispostaAi = 'Guida: ' + p.url;
     }
+  } else if (intp.intent === 'otp') {
+    payload = { type: 'answer', answer: { kind: 'text', tag: 'OTP non arriva', body: RISPOSTE_FISSE.otp } };
+    rispostaAi = RISPOSTE_FISSE.otp;
   } else if (intp.intent === 'offerte') {
     const offers = filtraOfferte(intp.offerFilter || messaggio);
     payload = { type: 'offers', offers };
     rispostaAi = offers.map(o => `${o.nome}: luce ${o.luce}; gas ${o.gas}; comm ${o.comm}; scad ${o.scadenza}`).join(' | ');
-  } else if (intp.intent === 'cliente') {
-    payload = { type: 'cliente', cliente: {
-      telefono: DEALER_SUPPORT, nome: codici.nome, sisSub: codici.sisSub, agenzia: codici.agenzia, trovato: codici.trovato
-    } };
-    rispostaAi = `Indirizzato al Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub}).`;
-  } else if (intp.intent === 'disservizio') {
-    const codiciTxt = codici.trovato
-      ? `Negozio: ${codici.nome}\nSIS-SUB: ${codici.sisSub}\nAgenzia: ${codici.agenzia}`
-      : `Negozio: ${codici.nome || negozioInput} (codici SIS-SUB da verificare)`;
-    const body = `Per un disservizio del portale contatta subito il Dealer Support al ${DEALER_SUPPORT}. Comunica questi codici per farti identificare:\n${codiciTxt}`;
-    payload = { type: 'answer', answer: { kind: 'text', tag: 'Contatta il supporto', body } };
-    rispostaAi = body;
   } else if (intp.intent === 'avanzamento') {
     payload = { type: 'answer', answer: { kind: 'text', tag: 'Avanzamento pratiche', body: RISPOSTE_FISSE.avanzamento } };
     rispostaAi = RISPOSTE_FISSE.avanzamento;
+  } else if (intp.intent === 'disservizio') {
+    payload = { type: 'support', supportReason: 'disservizio' };
+    rispostaAi = `Disservizio portale → Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub}).`;
+  } else if (intp.intent === 'cliente') {
+    payload = { type: 'support', supportReason: 'cliente' };
+    rispostaAi = `Verifica cliente → Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub}).`;
   } else {
     // Richiesta ancora da chiarire: non creo un ticket finché non si capisce l'intento
-    return json({ ticketId: null, type: 'clarify', colore });
+    return json({ ticketId: null, type: 'clarify', colore, codici: codiciOut });
   }
 
   // 3) Salva il ticket
@@ -104,5 +104,5 @@ export default async function handler(request) {
     try { await notificaRosso({ codice, negozio: codici.nome || negozioInput, categoria, messaggio }); } catch {}
   }
 
-  return json({ ticketId: id, codice, colore, ...payload });
+  return json({ ticketId: id, codice, colore, codici: codiciOut, ...payload });
 }
