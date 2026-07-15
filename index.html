@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supporto Dealer On Line</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  img{max-width:100%}
+</style>
+
+<style>
+@font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/assets/montserrat.woff2") format("woff2");
+  }
+  :root {
+    --paper: #f3faf9;
+    --paper-raised: #ffffff;
+    --ink: #12211e;
+    --ink-soft: #4d6864;
+    --line: #d3e6e3;
+    --accent: #00a99d;
+    --accent-ink: #00443e;
+    --accent-soft: #d8f2ee;
+    --sev-red: #c14f3f;
+    --sev-red-soft: #f8e2dd;
+    --sev-amber: #a8791f;
+    --sev-amber-soft: #f8ecd4;
+    --sev-green: #4c7a3f;
+    --sev-green-soft: #e6efdc;
+    --shadow: 0 1px 2px rgba(18,33,30,0.06), 0 8px 24px -12px rgba(18,33,30,0.18);
+    --radius: 10px;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f1715;
+    --paper-raised: #172420;
+    --ink: #e4f2ef;
+    --ink-soft: #93aca6;
+    --line: #263833;
+    --accent: #3cd6c5;
+    --accent-ink: #c9f5ee;
+    --accent-soft: #1b3934;
+    --sev-red: #e0897c;
+    --sev-red-soft: #3a2621;
+    --sev-amber: #d9ac54;
+    --sev-amber-soft: #3a2f18;
+    --sev-green: #8fc17d;
+    --sev-green-soft: #223420;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f1715;
+      --paper-raised: #172420;
+      --ink: #e4f2ef;
+      --ink-soft: #93aca6;
+      --line: #263833;
+      --accent: #3cd6c5;
+      --accent-ink: #c9f5ee;
+      --accent-soft: #1b3934;
+      --sev-red: #e0897c;
+      --sev-red-soft: #3a2621;
+      --sev-amber: #d9ac54;
+      --sev-amber-soft: #3a2f18;
+      --sev-green: #8fc17d;
+      --sev-green-soft: #223420;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
+  .body-face { font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 500; }
+  .mono { font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif; font-variant-numeric: tabular-nums; }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+  .masthead h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; font-weight: 800; }
+  .masthead p { margin: 0; color: var(--ink-soft); font-family: inherit; }
+  .masthead .eyebrow { font-family: inherit; }
+
+  .tabs { display: inline-flex; gap: 2px; padding: 3px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); }
+  .tabs button {
+    font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85rem; font-weight: 600; letter-spacing: 0.01em;
+    padding: 8px 18px; border-radius: 999px; border: none; background: transparent; color: var(--ink-soft);
+    cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+  }
+  .tabs button.active { background: var(--accent); color: #fff; }
+  .tabs button:not(.active):hover { background: var(--accent-soft); color: var(--ink); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---------- Form view ---------- */
+  .form-wrap { display: flex; justify-content: center; padding-top: 8px; }
+  .phone-card {
+    width: 100%; max-width: 420px; background: var(--paper-raised); border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: var(--shadow); padding: 26px 24px 28px; font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .phone-card .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+  .brand-row span { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+  .phone-card h2 { font-size: 1.3rem; margin: 0 0 6px; text-wrap: balance; font-weight: 800; }
+  .phone-card .sub { margin: 0 0 22px; color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
+
+  label.field { display: block; margin-bottom: 16px; }
+  label.field span.label-text { display: block; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; letter-spacing: 0.01em; }
+  .field input[type="text"], .field select, .field textarea {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink); font-size: 0.95rem; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 78px; line-height: 1.45; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .sev-preview { display: flex; align-items: center; gap: 8px; margin: -6px 0 16px; font-size: 0.82rem; color: var(--ink-soft); min-height: 20px; }
+  .sev-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.02em; }
+  .sev-chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sev-chip.rosso { background: var(--sev-red-soft); color: var(--sev-red); }
+  .sev-chip.rosso .dot { background: var(--sev-red); }
+  .sev-chip.giallo { background: var(--sev-amber-soft); color: var(--sev-amber); }
+  .sev-chip.giallo .dot { background: var(--sev-amber); }
+  .sev-chip.verde { background: var(--sev-green-soft); color: var(--sev-green); }
+  .sev-chip.verde .dot { background: var(--sev-green); }
+
+  .field-hint { display: block; margin-top: 5px; font-size: 0.72rem; color: var(--ink-soft); }
+
+  .client-data-block { display: none; background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 2px; margin-bottom: 16px; }
+  .client-data-block.show { display: block; }
+  .client-data-note { margin: 0 0 10px; font-size: 0.82rem; color: var(--accent-ink); line-height: 1.4; }
+  .client-data-block .field { margin-bottom: 14px; }
+  .client-data-block .field input { background: var(--paper-raised); }
+  label.field span.label-text em { color: var(--sev-red); font-style: normal; font-weight: 700; margin-left: 4px; font-size: 0.7rem; text-transform: uppercase; }
+
+  .submit-btn {
+    width: 100%; padding: 12px; border-radius: 9px; border: none; background: var(--accent); color: #fff;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer; margin-top: 4px; transition: filter 0.15s ease;
+  }
+  .submit-btn:hover { filter: brightness(1.06); }
+  .submit-btn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+
+  .confirm-panel { display: none; }
+  .confirm-panel.show { display: block; }
+  .confirm-panel .ticket-code { display: inline-block; margin: 2px 0 14px; padding: 4px 10px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; letter-spacing: 0.02em; }
+  .ai-answer { display: none; background: var(--paper); border: 1px dashed var(--line); border-radius: 10px; padding: 14px 16px; margin-top: 14px; font-size: 0.9rem; line-height: 1.55; }
+  .ai-answer.show { display: block; }
+  .ai-answer .tag { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+
+  .redirect-answer { display: none; background: var(--sev-amber-soft); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-top: 12px; font-size: 0.9rem; line-height: 1.5; color: var(--ink); }
+  .redirect-answer.show { display: block; }
+  .redirect-answer .tag { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sev-amber); font-weight: 700; margin-bottom: 6px; }
+  .redirect-phone { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; color: var(--ink); margin-bottom: 6px; }
+  .redirect-codes { display: inline-block; font-size: 0.82rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: var(--paper-raised); border: 1px solid var(--line); }
+  .procedure-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--accent-ink); text-decoration: none; border-bottom: 2px solid var(--accent); padding-bottom: 1px; }
+  .procedure-link:hover { color: var(--accent); }
+  .procedure-body { white-space: pre-line; font-size: 0.88rem; line-height: 1.55; }
+  .procedure-body .promo-list { white-space: normal; display: flex; flex-direction: column; gap: 10px; }
+  .promo-item { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--paper); }
+  .promo-name { font-weight: 700; font-size: 0.9rem; color: var(--accent-ink); }
+  .promo-meta { font-size: 0.76rem; color: var(--ink-soft); margin: 2px 0 8px; }
+  .promo-prices { display: flex; flex-direction: column; gap: 3px; font-size: 0.83rem; }
+  .promo-prices b { font-weight: 700; color: var(--ink); }
+
+  .clarify-block { display: none; margin-top: 14px; background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .clarify-block.show { display: block; }
+  .clarify-block .tag { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+  .clarify-q { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.5; color: var(--ink); }
+  .clarify-chips { display: flex; flex-direction: column; gap: 8px; }
+  .clarify-chips .chip { text-align: left; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink); font-size: 0.86rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .clarify-chips .chip:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--paper); }
+  .clarify-chips .chip-none { color: var(--ink-soft); font-weight: 500; }
+
+  .assistant-line { display: none; font-size: 0.95rem; line-height: 1.5; color: var(--ink); margin: 4px 0 2px; }
+  .assistant-line.show { display: block; }
+  .assistant-line .wave { font-size: 1.05rem; }
+
+  .preview-switch { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .preview-switch-label { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); font-weight: 700; }
+
+  .feedback-block { display: none; margin-top: 14px; }
+  .feedback-block.show { display: block; }
+  .feedback-q { margin: 0 0 8px; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+  .feedback-btns { display: flex; flex-direction: column; gap: 8px; }
+  .feedback-btns button { padding: 10px 12px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: 1px solid var(--line); font-family: inherit; }
+  .fb-yes { background: var(--sev-green-soft); color: var(--sev-green); border-color: var(--sev-green); }
+  .fb-yes:hover { filter: brightness(0.97); }
+  .fb-no { background: var(--paper); color: var(--ink); }
+  .fb-no:hover { background: var(--sev-amber-soft); border-color: var(--sev-amber); color: var(--sev-amber); }
+
+  .outcome-block { display: none; margin-top: 14px; border-radius: 10px; padding: 14px 16px; font-size: 0.9rem; line-height: 1.5; }
+  .outcome-block.show { display: block; }
+  .outcome-block .tag { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 6px; }
+  .outcome-ok { background: var(--sev-green-soft); color: var(--ink); }
+  .outcome-ok .tag { color: var(--sev-green); }
+  .outcome-simone { background: var(--sev-amber-soft); color: var(--ink); }
+  .outcome-simone .tag { color: var(--sev-amber); }
+  .outcome-simone .redirect-phone { margin: 4px 0; }
+
+  /* Admin login gate */
+  .admin-gate { max-width: 380px; margin: 40px auto; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 30px 28px; }
+  .admin-gate h2 { margin: 0 0 6px; font-size: 1.2rem; font-weight: 800; }
+  .admin-gate p.sub { margin: 0 0 20px; color: var(--ink-soft); font-size: 0.9rem; }
+  .admin-gate label.field span.label-text { display:block; font-size:0.78rem; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+  .admin-gate input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-size:0.95rem; font-family:inherit; margin-bottom:14px; }
+  .admin-gate input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  .admin-gate .demo-note { font-size:0.75rem; color:var(--ink-soft); margin-top:4px; }
+  #admin-content { display: none; }
+  #admin-content.show { display: block; }
+  .field input[type="file"] { padding: 8px 10px; font-size: 0.85rem; background: var(--paper); }
+  .field-hint.warn { color: var(--sev-red); font-weight: 600; }
+  .link-back { background: none; border: none; color: var(--ink-soft); font-size: 0.82rem; margin-top: 16px; cursor: pointer; text-decoration: underline; padding: 0; }
+
+  /* ---------- Dashboard view ---------- */
+  .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+  .stat-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .stat-card .n { font-size: 1.7rem; font-weight: 800; line-height: 1; }
+  .stat-card .l { font-size: 0.76rem; color: var(--ink-soft); margin-top: 6px; letter-spacing: 0.01em; }
+  .stat-card.rosso .n { color: var(--sev-red); }
+  .stat-card.giallo .n { color: var(--sev-amber); }
+  .stat-card.verde .n { color: var(--sev-green); }
+
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+  .column { display: flex; flex-direction: column; gap: 10px; }
+  .column-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 4px; font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .column-head .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .column-head h3 { font-size: 0.82rem; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+  .column-head .count { margin-left: auto; font-size: 0.78rem; color: var(--ink-soft); font-weight: 600; }
+  .col-rosso .dot { background: var(--sev-red); } .col-rosso h3 { color: var(--sev-red); }
+  .col-giallo .dot { background: var(--sev-amber); } .col-giallo h3 { color: var(--sev-amber); }
+  .col-verde .dot { background: var(--sev-green); } .col-verde h3 { color: var(--sev-green); }
+
+  .ticket {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; box-shadow: var(--shadow); font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif;
+    border-left: 3px solid var(--stripe, var(--line));
+  }
+  .ticket-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .ticket-store { font-weight: 700; font-size: 0.9rem; }
+  .ticket-time { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; }
+  .ticket-cat { display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 5px; margin-bottom: 7px; }
+  .ticket-note { font-size: 0.85rem; color: var(--ink-soft); line-height: 1.42; margin-bottom: 9px; }
+  .ticket-bottom { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .status-pill { font-size: 0.72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+  .status-pill.ai { background: var(--accent-soft); color: var(--accent-ink); }
+  .status-pill.wait { background: var(--line); color: var(--ink-soft); }
+  .status-pill.done { background: var(--sev-green-soft); color: var(--sev-green); }
+  .status-pill.simone { background: var(--sev-amber-soft); color: var(--sev-amber); font-weight: 700; }
+  .status-pill.no { background: var(--sev-red-soft); color: var(--sev-red); }
+  .review-btns { display: flex; gap: 4px; }
+  .review-btns button { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; width: 24px; height: 24px; font-size: 0.75rem; cursor: pointer; color: var(--ink-soft); }
+  .review-btns button:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  .note-banner { margin-top: 26px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 0.85rem; color: var(--ink-soft); line-height: 1.5; }
+  .note-banner b { color: var(--ink); }
+
+  @media (max-width: 860px) {
+    .board { grid-template-columns: 1fr; }
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="shell">
+  <div class="masthead">
+    <div style="max-width:640px;">
+      <h1>Supporto Dealer On Line</h1>
+      <p class="body-face">Usa questo strumento per avere risposte immediate o supporto mentre Mario è in ferie. Se non trovi la risposta sarai messo in contatto con il collega di backup per le richieste dove serve un intervento. Ti ricordo che Mario è all'estero e torna operativo il <b>17</b>.</p>
+    </div>
+    <div class="preview-switch">
+      <span class="preview-switch-label">Anteprima</span>
+      <div class="tabs" role="tablist">
+        <button class="active body-face" data-view="form" role="tab" aria-selected="true">Vista Dealer</button>
+        <button class="body-face" data-view="dash" role="tab" aria-selected="false">Vista Admin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FORM VIEW ============ -->
+  <section class="view active" id="view-form">
+    <div class="form-wrap">
+      <div class="phone-card">
+        <div id="form-step">
+          <div class="brand-row"><span class="brand-dot"></span><span>Assistente Dealer</span></div>
+          <h2>Ciao! <span class="wave">👋</span> Come posso aiutarti?</h2>
+          <p class="sub">Scrivimi di cosa hai bisogno con parole tue: cerco di darti subito la risposta giusta. Se serve, ti metto in contatto con il collega di backup.</p>
+
+          <label class="field">
+            <span class="label-text">Il tuo negozio</span>
+            <input type="text" id="f-negozio" list="negozi-list" placeholder="Inizia a scrivere il nome del tuo negozio" autocomplete="off" />
+            <datalist id="negozi-list">
+              <option value="LO TURCO"></option>
+              <option value="CEM DI MASELLA"></option>
+              <option value="FE.MA"></option>
+              <option value="DIMENSIONE ELETTRONICA"></option>
+            </datalist>
+          </label>
+
+          <label class="field">
+            <span class="label-text">Raccontami pure</span>
+            <textarea id="f-nota" placeholder="Es. «come trovo il link per la firma OTP?» · «scadenza e prezzo dell'offerta Sprint» · «devo verificare la pratica di un cliente»"></textarea>
+          </label>
+
+          <div id="allegati-fields" class="client-data-block">
+            <label class="field" style="margin-bottom:2px;">
+              <span class="label-text">Allega la bolletta <em>consigliato</em></span>
+              <input type="file" id="f-allegati" multiple />
+              <span class="field-hint" id="allegati-hint">Foto o PDF della bolletta del cliente: fino a 5 file.</span>
+            </label>
+          </div>
+
+          <button class="submit-btn body-face" id="f-submit">Chiedi</button>
+        </div>
+
+        <div class="confirm-panel body-face" id="confirm-panel">
+          <!-- saluto dell'assistente (variabile) -->
+          <div class="assistant-line" id="c-greeting"></div>
+
+          <!-- risposta dal cervello (procedura o offerte) -->
+          <div class="ai-answer" id="c-answer">
+            <span class="tag" id="c-answer-tag">Risposta</span>
+            <div id="c-answer-body" class="procedure-body"></div>
+            <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-answer-link" style="display:none; margin-top:10px;">Apri la guida &rarr;</a>
+          </div>
+
+          <!-- l'AI chiede: 3 percorsi -->
+          <div id="c-clarify" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">Certo, ci penso io! Aiutami solo a capire meglio così ti do la risposta giusta 🙂<br>Di cosa hai bisogno?</p>
+            <div class="clarify-chips">
+              <button type="button" class="chip" data-intent="portale">Assistenza sul portale</button>
+              <button type="button" class="chip" data-intent="cliente">Assistenza su un cliente</button>
+              <button type="button" class="chip" data-intent="offerte">Assistenza sulle offerte</button>
+            </div>
+          </div>
+
+          <!-- sotto-percorso: portale -> procedure -->
+          <div id="c-portale" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">Perfetto! Su quale operazione del portale ti serve una mano?</p>
+            <div class="clarify-chips" id="c-portale-chips"></div>
+          </div>
+
+          <!-- sotto-percorso: cliente -> chiama supporto -->
+          <div id="c-cliente" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">Volentieri! Per le verifiche su un cliente serve l'accesso al portale del supporto. Ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:</p>
+            <div class="redirect-phone mono">06 45698346</div>
+            <div class="redirect-codes mono" id="c-cliente-codes">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
+            <p class="clarify-q" style="margin-top:14px;">Dopo la chiamata sei riuscito a risolvere?</p>
+            <div class="feedback-btns">
+              <button type="button" class="fb-yes" id="cl-yes">Sì, ho risolto</button>
+              <button type="button" class="fb-no" id="cl-no">No, serve il controllo di Simone</button>
+            </div>
+          </div>
+
+          <!-- feedback su una risposta data -->
+          <div id="c-feedback" class="feedback-block">
+            <p class="feedback-q">Ti è stato utile?</p>
+            <div class="feedback-btns">
+              <button type="button" class="fb-yes" id="fb-yes">Sì, grazie!</button>
+              <button type="button" class="fb-no" id="fb-no">No, ho ancora bisogno di aiuto</button>
+            </div>
+          </div>
+
+          <!-- escalation: CF + opportunity per Simone -->
+          <div id="c-escalate" class="client-data-block">
+            <p class="client-data-note">Va bene, faccio verificare la pratica al collega. Lasciami i dati del cliente così Simone controlla a portale:</p>
+            <label class="field">
+              <span class="label-text">Codice fiscale cliente <em>obbligatorio</em></span>
+              <input type="text" id="f-cf" placeholder="es. RSSMRA80A01H501U" />
+            </label>
+            <label class="field">
+              <span class="label-text">Numero opportunity <em>obbligatorio</em></span>
+              <input type="text" id="f-opportunity" placeholder="es. OPP-004821" />
+            </label>
+            <label class="field">
+              <span class="label-text">Vuoi aggiungere qualcosa?</span>
+              <textarea id="f-nota-controllo" placeholder="Descrivi cosa deve verificare Simone..."></textarea>
+            </label>
+            <span class="field-hint warn" id="escalate-hint" style="display:none;">Mi servono sia il codice fiscale sia il numero opportunity, grazie.</span>
+            <button type="button" class="submit-btn" id="f-escalate-submit" style="margin-top:4px;">Invia a Simone</button>
+          </div>
+
+          <!-- ESITO A: risolto -->
+          <div id="c-final-ok" class="outcome-block outcome-ok">
+            <span class="tag">A disposizione</span>
+            <p style="margin:0;">Perfetto, sono contento di esserti stato utile! 🙂 Se ti serve altro, scrivimi pure quando vuoi.</p>
+          </div>
+
+          <!-- ESITO B: inoltrata a Simone -->
+          <div id="c-final-simone" class="outcome-block outcome-simone">
+            <span class="tag">Inoltrata a Simone</span>
+            <p style="margin:0 0 10px;">Fatto! Ho girato la richiesta al collega <b>Simone</b> via email: la verifica e ti ricontatta a breve. Grazie per la pazienza. 🙏</p>
+            <p style="margin:0 0 4px; font-size:0.82rem; color:var(--ink-soft);">Se ti serve subito, puoi anche chiamare il Dealer Support:</p>
+            <div class="redirect-phone mono">06 45698346</div>
+            <div class="redirect-codes mono" id="c-sis-sub">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
+          </div>
+
+          <button class="link-back" id="f-reset">&larr; Fai un'altra domanda</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD VIEW ============ -->
+  <section class="view" id="view-dash">
+
+    <!-- Gate: solo l'amministratore -->
+    <div class="admin-gate" id="admin-gate">
+      <h2>Area riservata</h2>
+      <p class="sub">La dashboard è visibile solo all'amministratore.</p>
+      <label class="field"><span class="label-text">Email</span>
+        <input type="email" id="admin-email" placeholder="marioisernia@gmail.com" autocomplete="off" />
+      </label>
+      <label class="field"><span class="label-text">Password</span>
+        <input type="password" id="admin-pw" placeholder="••••••••" autocomplete="off" />
+      </label>
+      <button class="submit-btn" id="admin-login-btn">Accedi</button>
+      <p class="demo-note" id="admin-error" style="display:none;color:var(--sev-red)"></p>
+    </div>
+
+    <div id="admin-content">
+    <div class="stat-strip">
+      <div class="stat-card rosso"><div class="n mono" id="stat-rosse">0</div><div class="l">Rosse aperte</div></div>
+      <div class="stat-card giallo"><div class="n mono" id="stat-gialle">0</div><div class="l">Gialle aperte</div></div>
+      <div class="stat-card verde"><div class="n mono" id="stat-verdi">0</div><div class="l">Verdi aperte</div></div>
+      <div class="stat-card"><div class="n mono" id="stat-ok">0%</div><div class="l">Risposte AI segnate corrette</div></div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="note-banner">
+      <b>Come leggere gli stati:</b> <span class="status-pill done">Risposta AI — bastata</span> il dealer ha confermato che la risposta automatica è stata sufficiente · <span class="status-pill wait">In attesa feedback</span> il dealer non ha ancora risposto · <span class="status-pill simone">Intervento Simone</span> il dealer ha insistito e la pratica è stata inoltrata via email al collega (CF + opportunity). I bottoni ✓/✕ ti servono per validare la qualità della risposta automatica.
+    </div>
+    </div><!-- /#admin-content -->
+  </section>
+</div>
+
+<script>
+  // ------- Cambio vista (Dealer / Admin) -------
+  const tabs = document.querySelectorAll('.tabs button');
+  const views = { form: document.getElementById('view-form'), dash: document.getElementById('view-dash') };
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-selected', 'true');
+      Object.values(views).forEach(v => v.classList.remove('active'));
+      views[btn.dataset.view].classList.add('active');
+      if (btn.dataset.view === 'dash') checkAdmin();
+    });
+  });
+
+  // ------- Stato conversazione -------
+  let currentTicketId = null;
+  const negozioEl = () => document.getElementById('f-negozio').value.trim();
+
+  function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
+  function hidePanels(){
+    ['c-greeting','c-answer','c-clarify','c-portale','c-cliente','c-feedback','c-escalate','c-final-ok','c-final-simone']
+      .forEach(id => document.getElementById(id).classList.remove('show'));
+  }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  async function apiPost(url, data){
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    return res.json();
+  }
+
+  // ------- Render delle risposte -------
+  function renderAnswer(answer){
+    const body = document.getElementById('c-answer-body');
+    const linkEl = document.getElementById('c-answer-link');
+    document.getElementById('c-answer-tag').textContent = answer.tag || 'Risposta';
+    linkEl.style.display = 'none';
+    if (answer.kind === 'link'){
+      body.textContent = answer.body || 'Ecco la guida:';
+      linkEl.href = answer.url; linkEl.style.display = 'inline-flex';
+    } else {
+      body.textContent = answer.body || '';
+    }
+    showGreeting('Ecco qua, spero ti sia utile 👇');
+    document.getElementById('c-answer').classList.add('show');
+    document.getElementById('c-feedback').classList.add('show');
+  }
+  function renderOffers(offers){
+    const rows = (offers||[]).map(o => `
+      <div class="promo-item">
+        <div class="promo-name">${esc(o.nome)}</div>
+        <div class="promo-meta">${esc(o.tipo)} · Scadenza ${esc(o.scadenza)} · Durata ${esc(o.durata)}</div>
+        <div class="promo-prices">
+          <span><b>Costo luce:</b> ${esc(o.luce)}</span>
+          <span><b>Costo gas:</b> ${esc(o.gas)}</span>
+          <span><b>Commercializzazione:</b> ${esc(o.comm)}</span>
+        </div>
+      </div>`).join('');
+    document.getElementById('c-answer-tag').textContent = 'Le nostre offerte';
+    document.getElementById('c-answer-link').style.display = 'none';
+    document.getElementById('c-answer-body').innerHTML = '<div class="promo-list">' + rows + '</div>';
+    showGreeting('Con piacere! Ecco le offerte in corso 👇');
+    document.getElementById('c-answer').classList.add('show');
+    document.getElementById('c-feedback').classList.add('show');
+  }
+  function renderCliente(c){
+    document.getElementById('c-cliente-codes').textContent = c.trovato
+      ? 'Negozio: ' + c.nome + ' / SIS-SUB: ' + (c.sisSub||'—') + ' / Agenzia: ' + (c.agenzia||'—')
+      : 'Negozio: ' + (c.nome||'—') + ' / codici SIS-SUB da verificare';
+    document.getElementById('c-cliente').classList.add('show');
+  }
+
+  // ------- Invio richiesta -------
+  async function inviaRichiesta(messaggio){
+    hidePanels();
+    const btn = document.getElementById('f-submit');
+    btn.disabled = true; const old = btn.textContent; btn.textContent = 'Sto pensando…';
+    let r;
+    try { r = await apiPost('/api/ask', { negozio: negozioEl(), messaggio }); }
+    catch { r = { error: 'rete' }; }
+    btn.disabled = false; btn.textContent = old;
+
+    document.getElementById('form-step').style.display = 'none';
+    document.getElementById('confirm-panel').classList.add('show');
+
+    if (!r || r.error){ showGreeting('Ops, qualcosa è andato storto. Riprova tra poco 🙏'); return; }
+    currentTicketId = r.ticketId || currentTicketId;
+    if (r.type === 'answer') renderAnswer(r.answer);
+    else if (r.type === 'offers') renderOffers(r.offers);
+    else if (r.type === 'cliente') renderCliente(r.cliente);
+    else document.getElementById('c-clarify').classList.add('show');
+  }
+
+  document.getElementById('f-submit').addEventListener('click', () => {
+    const msg = document.getElementById('f-nota').value.trim();
+    if (!msg){ document.getElementById('f-nota').focus(); return; }
+    inviaRichiesta(msg);
+  });
+
+  // Allegati: mostra solo se si parla di bolletta
+  document.getElementById('f-nota').addEventListener('input', (e) => {
+    const show = /bolletta|analisi|conviene|confront|preventiv/.test(e.target.value.toLowerCase());
+    document.getElementById('allegati-fields').classList.toggle('show', show);
+  });
+  document.getElementById('f-allegati').addEventListener('change', (e) => {
+    const hint = document.getElementById('allegati-hint');
+    if (e.target.files.length > 5){ hint.textContent = 'Massimo 5 file.'; hint.classList.add('warn'); }
+    else { hint.textContent = e.target.files.length ? e.target.files.length + ' file selezionati.' : 'Foto o PDF della bolletta del cliente: fino a 5 file.'; hint.classList.remove('warn'); }
+  });
+
+  // ------- 3 percorsi -------
+  const portaleTopics = [
+    ['Link firma / OTP', 'come trovo il link firma otp'],
+    ['Inserire offerta a carrello', 'inserire offerta a carrello associazione punti'],
+    ['Fare una voltura', 'come faccio una voltura'],
+    ['Fare un subentro', 'come faccio un subentro'],
+    ['Modificare anagrafica cliente', 'modifica anagrafica mail telefono indirizzo'],
+    ['Primo accesso / credenziali', 'primo accesso al portale credenziali'],
+    ['Fatture e debiti', 'visionare fatture del cliente'],
+    ['Utenze / aumento potenza', 'controllare utenze aumento potenza']
+  ];
+  const portaleChips = document.getElementById('c-portale-chips');
+  portaleTopics.forEach(([short, phrase]) => {
+    const b = document.createElement('button');
+    b.type='button'; b.className='chip'; b.textContent = short; b.dataset.phrase = phrase;
+    portaleChips.appendChild(b);
+  });
+  const noneBtn = document.createElement('button');
+  noneBtn.type='button'; noneBtn.className='chip chip-none'; noneBtn.textContent='Non è tra queste'; noneBtn.dataset.none='1';
+  portaleChips.appendChild(noneBtn);
+  portaleChips.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip'); if (!btn) return;
+    if (btn.dataset.none === '1') inviaRichiesta('devo verificare la pratica di un cliente');
+    else inviaRichiesta(btn.dataset.phrase);
+  });
+
+  document.querySelectorAll('#c-clarify .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const intent = chip.dataset.intent;
+      if (intent === 'portale'){ hidePanels(); document.getElementById('c-portale').classList.add('show'); }
+      else if (intent === 'cliente') inviaRichiesta('devo verificare la pratica di un cliente');
+      else if (intent === 'offerte') inviaRichiesta('mostrami le offerte in corso');
+    });
+  });
+
+  // ------- Percorso cliente: hai risolto? -------
+  document.getElementById('cl-yes').addEventListener('click', async () => {
+    if (currentTicketId) await apiPost('/api/feedback', { ticketId: currentTicketId, bastata: true });
+    hidePanels(); document.getElementById('c-final-ok').classList.add('show');
+  });
+  document.getElementById('cl-no').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate').classList.add('show'); });
+
+  // ------- Feedback -------
+  document.getElementById('fb-yes').addEventListener('click', async () => {
+    if (currentTicketId) await apiPost('/api/feedback', { ticketId: currentTicketId, bastata: true });
+    hidePanels(); document.getElementById('c-final-ok').classList.add('show');
+  });
+  document.getElementById('fb-no').addEventListener('click', async () => {
+    if (currentTicketId) await apiPost('/api/feedback', { ticketId: currentTicketId, bastata: false });
+    hidePanels();
+    showGreeting('Mi dispiace non esserti stato d\'aiuto! Dimmi meglio così ci riprovo 🙂');
+    document.getElementById('c-clarify').classList.add('show');
+  });
+
+  // ------- Escalation a Simone -------
+  document.getElementById('f-escalate-submit').addEventListener('click', async () => {
+    const cf = document.getElementById('f-cf').value.trim();
+    const opp = document.getElementById('f-opportunity').value.trim();
+    const hint = document.getElementById('escalate-hint');
+    if (!cf || !opp){ hint.style.display = 'block'; return; }
+    hint.style.display = 'none';
+    const btn = document.getElementById('f-escalate-submit'); btn.disabled = true; btn.textContent = 'Invio…';
+    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, cf, opportunity: opp, nota: document.getElementById('f-nota-controllo').value });
+    btn.disabled = false; btn.textContent = 'Invia a Simone';
+    if (r && r.ok){
+      document.getElementById('c-sis-sub').textContent = r.nome
+        ? 'Negozio: ' + r.nome + ' / SIS-SUB: ' + (r.sisSub||'—') + ' / Agenzia: ' + (r.agenzia||'—')
+        : '—';
+      hidePanels(); document.getElementById('c-final-simone').classList.add('show');
+    } else {
+      hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block';
+    }
+  });
+
+  // ------- Nuova domanda -------
+  document.getElementById('f-reset').addEventListener('click', () => {
+    document.getElementById('form-step').style.display = 'block';
+    document.getElementById('confirm-panel').classList.remove('show');
+    ['f-negozio','f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('allegati-hint').textContent = 'Foto o PDF della bolletta del cliente: fino a 5 file.';
+    document.getElementById('allegati-hint').classList.remove('warn');
+    document.getElementById('escalate-hint').style.display = 'none';
+    document.getElementById('allegati-fields').classList.remove('show');
+    currentTicketId = null;
+    hidePanels();
+  });
+
+  // ------- Login admin -------
+  async function checkAdmin(){
+    try {
+      const r = await (await fetch('/api/session')).json();
+      if (r.authenticated){ enterAdmin(); }
+    } catch {}
+  }
+  function enterAdmin(){
+    document.getElementById('admin-gate').style.display = 'none';
+    document.getElementById('admin-content').classList.add('show');
+    loadDashboard();
+  }
+  document.getElementById('admin-login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-pw').value;
+    const err = document.getElementById('admin-error');
+    const r = await apiPost('/api/login', { email, password });
+    if (r && r.ok){ err.style.display='none'; enterAdmin(); }
+    else { err.textContent = (r && r.error) || 'Credenziali non valide'; err.style.display='block'; }
+  });
+
+  // ------- Dashboard -------
+  const ESITO = {
+    in_attesa: ['In attesa feedback','wait'],
+    bastata: ['Risposta AI — bastata','done'],
+    non_bastata: ['Risposta AI — non bastata','no'],
+    intervento_simone: ['Intervento Simone','simone']
+  };
+  async function loadDashboard(){
+    let data;
+    try { data = await (await fetch('/api/tickets')).json(); } catch { return; }
+    if (!data || data.error){ return; }
+    const s = data.stats || {};
+    document.getElementById('stat-rosse').textContent = s.rosse ?? 0;
+    document.getElementById('stat-gialle').textContent = s.gialle ?? 0;
+    document.getElementById('stat-verdi').textContent = s.verdi ?? 0;
+    const pct = s.validati > 0 ? Math.round((s.ok / s.validati) * 100) : 0;
+    document.getElementById('stat-ok').textContent = pct + '%';
+
+    const cols = { rosso: [], giallo: [], verde: [] };
+    (data.tickets||[]).forEach(t => { (cols[t.colore] || cols.giallo).push(t); });
+    const board = document.getElementById('board');
+    const colDef = [['rosso','Rosso — Urgente','sev-red'],['giallo','Giallo — Media','sev-amber'],['verde','Verde — Non urgente','sev-green']];
+    board.innerHTML = colDef.map(([key,label]) => {
+      const items = cols[key];
+      const cards = items.map(t => ticketCard(t, key)).join('') || '<p style="color:var(--ink-soft);font-size:.85rem;padding:4px">Nessuna richiesta.</p>';
+      return `<div class="column">
+        <div class="column-head col-${key}"><span class="dot"></span><h3>${label}</h3><span class="count mono">${items.length}</span></div>
+        ${cards}
+      </div>`;
+    }).join('');
+    board.querySelectorAll('.review-btns button').forEach(b => {
+      b.addEventListener('click', async () => {
+        await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: Number(b.dataset.id), rispostaOk: b.dataset.ok === '1' }) });
+        loadDashboard();
+      });
+    });
+  }
+  function ticketCard(t, key){
+    const varMap = { rosso:'--sev-red', giallo:'--sev-amber', verde:'--sev-green' };
+    const softMap = { rosso:'--sev-red-soft', giallo:'--sev-amber-soft', verde:'--sev-green-soft' };
+    const [label, cls] = ESITO[t.esito] || ESITO.in_attesa;
+    const when = timeago(t.created_at);
+    return `<article class="ticket" style="--stripe:var(${varMap[key]})">
+      <div class="ticket-top"><span class="ticket-store">${esc(t.negozio||'—')}</span><span class="ticket-time mono">${when}</span></div>
+      <span class="ticket-cat" style="background:var(${softMap[key]}); color:var(${varMap[key]})">${esc(t.categoria)}</span>
+      <p class="ticket-note">${esc(t.messaggio)}</p>
+      <div class="ticket-bottom">
+        <span class="status-pill ${cls}">${label}</span>
+        <div class="review-btns"><button title="Risposta OK" data-id="${t.id}" data-ok="1">✓</button><button title="Da migliorare" data-id="${t.id}" data-ok="0">✕</button></div>
+      </div>
+    </article>`;
+  }
+  function timeago(iso){
+    const d = new Date(iso); const m = Math.floor((Date.now()-d.getTime())/60000);
+    if (m < 1) return 'ora'; if (m < 60) return m+' min fa';
+    const h = Math.floor(m/60); if (h < 24) return h+' h fa';
+    return Math.floor(h/24)+' g fa';
+  }
+</script>
+
+</html>
