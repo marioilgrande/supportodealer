@@ -5,7 +5,8 @@ import { PROCEDURE_BY_ID, filtraOfferte, matchProcedura, RISPOSTE_FISSE } from '
 import { codiciNegozio } from '../lib/negozi.js';
 import { notificaRosso } from '../lib/email.js';
 
-export const config = { runtime: 'edge' };
+// Runtime Node (default): serve per l'invio email via SMTP (nodemailer).
+export const config = { runtime: 'nodejs' };
 
 const DEALER_SUPPORT = '06 45698346';
 
