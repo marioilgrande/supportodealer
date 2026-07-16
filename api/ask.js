@@ -3,7 +3,6 @@ import { sql, codiceTicket } from '../lib/db.js';
 import { interpret } from '../lib/gemini.js';
 import { getProcedure, getProceduraById, filtraOfferte, matchProcedura, rispostaFissa } from '../lib/kb.js';
 import { codiciNegozio } from '../lib/negozi.js';
-import { notificaRosso } from '../lib/email.js';
 
 export const config = { runtime: 'edge' };
 
@@ -103,10 +102,9 @@ export default async function handler(request) {
     return json({ error: 'DB: ' + (err.message || 'errore') }, 500);
   }
 
-  // 4) Notifica immediata per i rossi (non blocca la risposta)
-  if (colore === 'rosso') {
-    try { await notificaRosso({ codice, negozio: codici.nome || negozioInput, categoria, messaggio }); } catch {}
-  }
+  // Nessuna email in questa fase: parte solo se il dealer dice di NON aver risolto
+  // (vedi api/escalate.js). Così Mario non riceve avvisi per richieste che si
+  // chiudono da sole con la risposta automatica o con la chiamata al supporto.
 
   return json({ ticketId: id, codice, colore, codici: codiciOut, ...payload });
 }

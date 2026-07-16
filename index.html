@@ -197,6 +197,7 @@
   .feedback-block { display: none; margin-top: 14px; }
   .feedback-block.show { display: block; }
   .feedback-q { margin: 0 0 8px; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+  .hint-tasti { margin: 0 0 10px; font-size: 0.78rem; line-height: 1.45; color: var(--ink-soft); }
   .feedback-btns { display: flex; flex-direction: column; gap: 8px; }
   .feedback-btns button { padding: 10px 12px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: 1px solid var(--line); font-family: inherit; }
   .fb-yes { background: var(--sev-green-soft); color: var(--sev-green); border-color: var(--sev-green); }
@@ -388,6 +389,7 @@
           <!-- feedback su una risposta data -->
           <div id="c-feedback" class="feedback-block">
             <p class="feedback-q">Ti è stato utile?</p>
+            <p class="hint-tasti">Rispondimi con uno dei due tasti qui sotto 👇 Mi serve per sapere se devo ancora aiutarti: senza la tua risposta la richiesta resta in sospeso.</p>
             <div class="feedback-btns">
               <button type="button" class="fb-yes" id="fb-yes">Sì, grazie!</button>
               <button type="button" class="fb-no" id="fb-no">No, non ho risolto</button>
@@ -401,6 +403,7 @@
             <div class="redirect-phone mono">06 45698346</div>
             <div class="redirect-codes mono" id="c-support-codes">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
             <p class="clarify-q" style="margin-top:14px;">Hai chiamato il supporto e risolto?</p>
+            <p class="hint-tasti">Dopo la chiamata fammelo sapere con uno dei due tasti 👇 Se non hai risolto passo la richiesta a Simone; senza la tua risposta invece non parte nulla.</p>
             <div class="feedback-btns">
               <button type="button" class="fb-yes" id="su-yes">Sì, ho risolto</button>
               <button type="button" class="fb-no" id="su-no">No, non ho risolto</button>
@@ -544,6 +547,7 @@
   // ------- Stato conversazione -------
   let currentTicketId = null;
   let currentCodici = null;
+  let currentSupportReason = null;
   const negozioEl = () => document.getElementById('f-negozio').value.trim();
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
@@ -603,6 +607,7 @@
     notresolved: 'Mi dispiace non esserti bastato! A questo punto ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:'
   };
   function renderSupport(reason){
+    currentSupportReason = reason || 'cliente';
     document.getElementById('c-support-msg').textContent = SUPPORT_MSG[reason] || SUPPORT_MSG.cliente;
     document.getElementById('c-support-codes').textContent = codiciTxt(currentCodici);
     document.getElementById('c-support').classList.add('show');
@@ -695,7 +700,11 @@
     await inviaFeedback(true); hidePanels(); document.getElementById('c-final-ok').classList.add('show');
   });
   document.getElementById('su-no').addEventListener('click', () => {
-    hidePanels(); document.getElementById('c-help-type').classList.add('show');
+    hidePanels();
+    // Se si parlava già della pratica di un cliente, i dati da chiedere sono ovvi:
+    // vado dritto a CF + opportunity senza far scegliere pratica/altro.
+    if (currentSupportReason === 'cliente') document.getElementById('c-escalate').classList.add('show');
+    else document.getElementById('c-help-type').classList.add('show');
   });
 
   // ------- Tipo di aiuto: pratica o altro -------
@@ -739,7 +748,8 @@
   document.getElementById('f-reset').addEventListener('click', () => {
     document.getElementById('form-step').style.display = 'block';
     document.getElementById('confirm-panel').classList.remove('show');
-    ['f-negozio','f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati','f-referente','f-contatto','f-descrizione'].forEach(id => document.getElementById(id).value='');
+    // Il negozio NON si svuota: se lo stesso dealer fa un'altra domanda non deve riscriverlo.
+    ['f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati','f-referente','f-contatto','f-descrizione'].forEach(id => document.getElementById(id).value='');
     document.getElementById('allegati-hint').textContent = 'Foto o PDF della bolletta del cliente: fino a 5 file.';
     document.getElementById('allegati-hint').classList.remove('warn');
     document.getElementById('escalate-hint').style.display = 'none';
