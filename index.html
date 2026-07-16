@@ -445,29 +445,51 @@
               <input type="text" id="f-opportunity" placeholder="es. OPP-004821" />
             </label>
             <label class="field">
+              <span class="label-text">Il tuo nome <em>obbligatorio</em></span>
+              <input type="text" id="f-nome" placeholder="es. Luca Bianchi" />
+            </label>
+            <label class="field">
+              <span class="label-text">Come vuoi che Simone ti contatti?</span>
+              <select id="f-contatto-tipo">
+                <option value="telefono">Telefono</option>
+                <option value="email">Email</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="label-text" id="f-contatto-label">Numero di telefono <em>obbligatorio</em></span>
+              <input type="text" id="f-contatto-val" placeholder="es. 333 1234567" />
+            </label>
+            <label class="field">
               <span class="label-text">Vuoi aggiungere qualcosa?</span>
               <textarea id="f-nota-controllo" placeholder="Descrivi cosa deve verificare Simone..."></textarea>
             </label>
-            <span class="field-hint warn" id="escalate-hint" style="display:none;">Mi servono sia il codice fiscale sia il numero opportunity, grazie.</span>
+            <span class="field-hint warn" id="escalate-hint" style="display:none;">Mi servono codice fiscale, numero opportunity, il tuo nome e un recapito, grazie.</span>
             <button type="button" class="submit-btn" id="f-escalate-submit" style="margin-top:4px;">Invia a Simone</button>
           </div>
 
           <!-- escalation ALTRO: richiesta di contatto -->
           <div id="c-escalate-altro" class="client-data-block">
-            <p class="client-data-note">Nessun problema. Lasciami i tuoi riferimenti e Simone ti richiama appena possibile:</p>
+            <p class="client-data-note">Nessun problema. Lasciami i tuoi riferimenti e Simone ti contatta appena possibile:</p>
             <label class="field">
-              <span class="label-text">Nome / referente <em>obbligatorio</em></span>
-              <input type="text" id="f-referente" placeholder="es. Mario Rossi — Negozio X" />
+              <span class="label-text">Il tuo nome <em>obbligatorio</em></span>
+              <input type="text" id="f-nome-a" placeholder="es. Luca Bianchi" />
             </label>
             <label class="field">
-              <span class="label-text">Telefono o email <em>obbligatorio</em></span>
-              <input type="text" id="f-contatto" placeholder="es. 333 1234567 / mario@negozio.it" />
+              <span class="label-text">Come vuoi che Simone ti contatti?</span>
+              <select id="f-contatto-tipo-a">
+                <option value="telefono">Telefono</option>
+                <option value="email">Email</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="label-text" id="f-contatto-label-a">Numero di telefono <em>obbligatorio</em></span>
+              <input type="text" id="f-contatto-val-a" placeholder="es. 333 1234567" />
             </label>
             <label class="field">
               <span class="label-text">Di cosa hai bisogno?</span>
               <textarea id="f-descrizione" placeholder="Descrivi brevemente la richiesta..."></textarea>
             </label>
-            <span class="field-hint warn" id="altro-hint" style="display:none;">Mi servono nome e un recapito (telefono o email), grazie.</span>
+            <span class="field-hint warn" id="altro-hint" style="display:none;">Mi servono il tuo nome e un recapito (telefono o email), grazie.</span>
             <button type="button" class="submit-btn" id="f-altro-submit" style="margin-top:4px;">Invia richiesta a Simone</button>
           </div>
 
@@ -741,14 +763,31 @@
   }
 
   // ------- Escalation PRATICA (CF + opportunity) -------
+  // Telefono o email: cambia etichetta e segnaposto in base alla scelta
+  function collegaSceltaContatto(selectId, labelId, inputId){
+    const sel = document.getElementById(selectId);
+    sel.addEventListener('change', () => {
+      const email = sel.value === 'email';
+      document.getElementById(labelId).innerHTML =
+        (email ? 'Indirizzo email' : 'Numero di telefono') + ' <em>obbligatorio</em>';
+      document.getElementById(inputId).placeholder = email ? 'es. luca@negozio.it' : 'es. 333 1234567';
+    });
+  }
+  collegaSceltaContatto('f-contatto-tipo', 'f-contatto-label', 'f-contatto-val');
+  collegaSceltaContatto('f-contatto-tipo-a', 'f-contatto-label-a', 'f-contatto-val-a');
+
   document.getElementById('f-escalate-submit').addEventListener('click', async () => {
     const cf = document.getElementById('f-cf').value.trim();
     const opp = document.getElementById('f-opportunity').value.trim();
+    const nome = document.getElementById('f-nome').value.trim();
+    const contatto = document.getElementById('f-contatto-val').value.trim();
+    const contattoTipo = document.getElementById('f-contatto-tipo').value;
     const hint = document.getElementById('escalate-hint');
-    if (!cf || !opp){ hint.style.display = 'block'; return; }
+    if (!cf || !opp || !nome || !contatto){ hint.style.display = 'block'; return; }
     hint.style.display = 'none';
     const btn = document.getElementById('f-escalate-submit'); btn.disabled = true; const t = btn.textContent; btn.textContent = 'Invio…';
-    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'pratica', tipoPratica: currentTipoPratica, cf, opportunity: opp, nota: document.getElementById('f-nota-controllo').value });
+    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'pratica', tipoPratica: currentTipoPratica,
+      cf, opportunity: opp, nome, contattoTipo, contatto, nota: document.getElementById('f-nota-controllo').value });
     btn.disabled = false; btn.textContent = t;
     if (r && r.ok) mostraSimone(r);
     else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
@@ -756,13 +795,15 @@
 
   // ------- Escalation ALTRO (richiesta di contatto) -------
   document.getElementById('f-altro-submit').addEventListener('click', async () => {
-    const referente = document.getElementById('f-referente').value.trim();
-    const contatto = document.getElementById('f-contatto').value.trim();
+    const nome = document.getElementById('f-nome-a').value.trim();
+    const contatto = document.getElementById('f-contatto-val-a').value.trim();
+    const contattoTipo = document.getElementById('f-contatto-tipo-a').value;
     const hint = document.getElementById('altro-hint');
-    if (!referente || !contatto){ hint.style.display = 'block'; return; }
+    if (!nome || !contatto){ hint.style.display = 'block'; return; }
     hint.style.display = 'none';
     const btn = document.getElementById('f-altro-submit'); btn.disabled = true; const t = btn.textContent; btn.textContent = 'Invio…';
-    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'altro', referente, contatto, nota: document.getElementById('f-descrizione').value });
+    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'altro', nome, contattoTipo, contatto,
+      nota: document.getElementById('f-descrizione').value });
     btn.disabled = false; btn.textContent = t;
     if (r && r.ok) mostraSimone(r);
     else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
@@ -773,7 +814,7 @@
     document.getElementById('form-step').style.display = 'block';
     document.getElementById('confirm-panel').classList.remove('show');
     // Il negozio NON si svuota: se lo stesso dealer fa un'altra domanda non deve riscriverlo.
-    ['f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati','f-referente','f-contatto','f-descrizione'].forEach(id => document.getElementById(id).value='');
+    ['f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati','f-nome','f-contatto-val','f-nome-a','f-contatto-val-a','f-descrizione'].forEach(id => document.getElementById(id).value='');
     document.getElementById('allegati-hint').textContent = 'Foto o PDF della bolletta del cliente: fino a 5 file.';
     document.getElementById('allegati-hint').classList.remove('warn');
     document.getElementById('escalate-hint').style.display = 'none';

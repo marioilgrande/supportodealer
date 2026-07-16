@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS ticket (
   cf_cliente      TEXT NOT NULL DEFAULT '',
   num_opportunity TEXT NOT NULL DEFAULT '',
   tipo_pratica    TEXT NOT NULL DEFAULT '',   -- SUBENTRO | SWITCH | SWITCH CON VOLTURA | VOLTURA INTERNA
+  richiedente_nome     TEXT NOT NULL DEFAULT '',  -- chi ha fatto la richiesta
+  richiedente_contatto TEXT NOT NULL DEFAULT '',  -- "Telefono: ..." oppure "Email: ..."
   nota_controllo  TEXT NOT NULL DEFAULT '',
   risposta_ok     BOOLEAN,                           -- validazione admin: risposta AI corretta?
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
