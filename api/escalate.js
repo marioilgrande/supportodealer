@@ -2,8 +2,7 @@ import { json } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { notificaSimone, notificaAdminEscalation } from '../lib/email.js';
 
-// Runtime Node (default): serve per l'invio email via SMTP (nodemailer).
-export const config = { runtime: 'nodejs' };
+export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);

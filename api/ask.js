@@ -5,8 +5,7 @@ import { getProcedure, getProceduraById, filtraOfferte, matchProcedura, risposta
 import { codiciNegozio } from '../lib/negozi.js';
 import { notificaRosso } from '../lib/email.js';
 
-// Runtime Node (default): serve per l'invio email via SMTP (nodemailer).
-export const config = { runtime: 'nodejs' };
+export const config = { runtime: 'edge' };
 
 const DEALER_SUPPORT = '06 45698346';
 

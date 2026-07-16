@@ -5,7 +5,7 @@ Il dealer scrive in linguaggio naturale, l'assistente risponde dalla knowledge b
 se serve un controllo pratica, la richiesta viene inoltrata via email al collega **Simone**.
 Mario (admin) e Simone vedono tutte le richieste nella **dashboard protetta**.
 
-Stack: **Vercel** (frontend statico + funzioni serverless) · **Neon Postgres** · **Gemini** (interpretazione) · **Gmail SMTP** (email).
+Stack: **Vercel** (frontend statico + funzioni serverless) · **Neon Postgres** · **Gemini** (interpretazione) · **Resend** (email).
 Stessa impostazione del progetto *Pannello Segnalazioni*.
 
 ---
@@ -59,13 +59,21 @@ unicamente se il database non risponde, così l'assistente continua a rispondere
 ### 2) Chiave Gemini (gratuita)
 - Vai su https://aistudio.google.com/apikey → **Create API key** → copiala.
 
-### 3) Email (Gmail via SMTP — affidabile, no DNS)
-Le email partono da un account Gmail: Google le firma correttamente, quindi arrivano
-in posta in arrivo (non spam). Il mittente mostrato sarà l'indirizzo Gmail con nome "Supporto Dealer".
-1. Usa un account Gmail (il tuo o uno dedicato, es. `supportodealer.e2k@gmail.com`).
-2. Attiva la **Verifica in due passaggi**: https://myaccount.google.com/security
-3. Crea una **Password per le app**: https://myaccount.google.com/apppasswords → scegli "Mail" → copia la password di 16 caratteri.
-4. Userai `GMAIL_USER` (l'indirizzo) e `GMAIL_APP_PASSWORD` (i 16 caratteri) nelle variabili Vercel.
+### 3) Email (Resend + regola di inoltro)
+1. Registrati su https://resend.com **con l'email di Mario** → **API Keys** → crea una chiave (`re_…`).
+2. Senza dominio verificato, Resend usa il mittente di prova `onboarding@resend.dev` e consegna
+   **solo all'indirizzo dell'account Resend** (Mario). Per questo:
+   - `MAIL_ADMIN` = email di Mario
+   - `MAIL_SIMONE` = **email di Mario** (non di Simone)
+3. Nella casella di Mario crea una **regola di inoltro automatico**: le email con oggetto che
+   contiene **"Intervento richiesto"** vengono inoltrate a `simone.censi@e2kdistribution.com`.
+   Così Simone riceve le richieste e Mario le vede comunque (è la sua copia per conoscenza).
+
+> Il codice riconosce questo setup: se `MAIL_ADMIN` e `MAIL_SIMONE` sono uguali, **non** invia
+> la copia "per conoscenza" separata, per non mandarti due email identiche.
+
+**Quando il dominio sarà verificato** (Resend → Domains, serve accesso DNS): rimetti in
+`MAIL_SIMONE` l'indirizzo vero di Simone e togli la regola. Nessuna modifica al codice.
 
 ### 4) Deploy su Vercel
 ```bash
@@ -92,11 +100,10 @@ Aggiungi per **Production, Preview e Development** (vedi `.env.local.example`):
 | `AUTH_PASSWORD_SIMONE` | password per Simone |
 | `SESSION_SECRET` | random ≥32 char (`openssl rand -base64 48`) |
 | `GEMINI_API_KEY` | chiave Gemini (passo 2) |
-| `GMAIL_USER` | l'indirizzo Gmail mittente (passo 3) |
-| `GMAIL_APP_PASSWORD` | la Password per le app di 16 caratteri (passo 3) |
-| `MAIL_FROM_NAME` | `Supporto Dealer` |
+| `RESEND_API_KEY` | chiave Resend (passo 3) |
+| `MAIL_FROM` | `Supporto Dealer <onboarding@resend.dev>` |
 | `MAIL_ADMIN` | `mario.isernia@e2kdistribution.com` |
-| `MAIL_SIMONE` | `simone.censi@e2kdistribution.com` |
+| `MAIL_SIMONE` | `mario.isernia@e2kdistribution.com` ← Mario, poi la regola inoltra a Simone |
 
 Dopo aver salvato le variabili → **Redeploy** l'ultimo deployment.
 
