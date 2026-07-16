@@ -31,8 +31,16 @@ SUPPORTO DEALER/
 └── .env.local.example
 ```
 
-Per aggiornare **offerte/prezzi** o **procedure**: modifica `lib/kb.js`.
-Per aggiornare l'**elenco negozi**: `lib/negozi.js`.
+## Aggiornare i contenuti — SENZA deploy
+
+| Cosa | Dove si aggiorna | Effetto |
+|---|---|---|
+| **Procedure e risposte** (testi, parole chiave, guide) | Dashboard → **Contenuti** | immediato |
+| **Offerte** (prezzi, scadenze, commercializzazione) | Dashboard → **Contenuti** | immediato |
+| **Negozi** (nomi, SIS/SUB) | **Pannello Segnalazioni** (come già fai oggi, anche con l'import Excel) | entro 1 minuto |
+
+I file `lib/kb.js` e `lib/negozi.js` restano solo come **fallback di emergenza**: vengono usati
+unicamente se il database non risponde, così l'assistente continua a rispondere comunque.
 
 ---
 
@@ -40,8 +48,13 @@ Per aggiornare l'**elenco negozi**: `lib/negozi.js`.
 
 ### 1) Database Neon
 1. Vai su https://console.neon.tech → **New Project** → nome `supporto-dealer`, region *Europe (Frankfurt)*.
-2. Apri **SQL Editor**, incolla e lancia il contenuto di [`schema.sql`](./schema.sql).
-3. In **Connection Details** copia la **Connection string** (`postgresql://…?sslmode=require`).
+2. Apri **SQL Editor**, incolla e lancia il contenuto di [`schema.sql`](./schema.sql) (tabella dei ticket).
+3. Sempre nel SQL Editor, lancia anche [`schema-contenuti.sql`](./schema-contenuti.sql): crea le tabelle
+   `procedura` e `offerta` **già riempite** con i contenuti attuali. Da lì in poi si modificano dal
+   pannello **Contenuti** della dashboard, senza deploy.
+4. In **Connection Details** copia la **Connection string** (`postgresql://…?sslmode=require`).
+5. *(consigliato)* Apri anche il progetto Neon di **Segnalazioni** e copia la sua connection string:
+   serve per leggere i negozi (SIS/SUB) da lì, così li gestisci in un posto solo.
 
 ### 2) Chiave Gemini (gratuita)
 - Vai su https://aistudio.google.com/apikey → **Create API key** → copiala.
@@ -71,7 +84,8 @@ Aggiungi per **Production, Preview e Development** (vedi `.env.local.example`):
 
 | Nome | Valore |
 |---|---|
-| `DATABASE_URL` | connection string Neon (passo 1) |
+| `DATABASE_URL` | connection string Neon di `supporto-dealer` (passo 1) |
+| `SEGNALAZIONI_DATABASE_URL` | connection string Neon di *Segnalazioni* (per i negozi). Se omessa, usa l'elenco statico |
 | `AUTH_EMAIL` | `mario.isernia@e2kdistribution.com` |
 | `AUTH_PASSWORD` | password admin a tua scelta |
 | `AUTH_EMAIL_SIMONE` | `simone.censi@e2kdistribution.com` |

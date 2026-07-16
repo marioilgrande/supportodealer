@@ -214,6 +214,35 @@
   .outcome-simone .redirect-phone { margin: 4px 0; }
 
   /* Admin login gate */
+  /* Pannello Contenuti (admin) */
+  .admin-nav { display: inline-flex; gap: 2px; padding: 3px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 999px; margin-bottom: 18px; }
+  .admin-nav button { font-family: inherit; font-size: 0.82rem; font-weight: 600; padding: 7px 16px; border-radius: 999px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; }
+  .admin-nav button.active { background: var(--accent); color: #fff; }
+  .contenuti-intro { font-size: 0.86rem; color: var(--ink-soft); background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 18px; line-height: 1.5; }
+  .contenuti-intro b { color: var(--accent-ink); }
+  .cont-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 10px; }
+  .cont-head h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+  .btn-add { font-family: inherit; font-size: 0.8rem; font-weight: 700; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent-ink); cursor: pointer; }
+  .btn-add:hover { background: var(--accent); color: #fff; }
+  .cont-item { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; box-shadow: var(--shadow); }
+  .cont-item summary { cursor: pointer; padding: 12px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+  .ci-title { font-weight: 700; }
+  .ci-badge { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 5px; background: var(--accent-soft); color: var(--accent-ink); }
+  .ci-off { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; background: var(--sev-red-soft); color: var(--sev-red); }
+  .cont-body { padding: 4px 14px 14px; border-top: 1px solid var(--line); }
+  .cont-body .field { margin-bottom: 12px; }
+  .cont-body input[type="text"], .cont-body select, .cont-body textarea { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 0.9rem; font-family: inherit; }
+  .cont-body textarea { resize: vertical; line-height: 1.5; }
+  .cont-check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-bottom: 12px; }
+  .cont-actions { display: flex; gap: 8px; }
+  .btn-save, .btn-del { font-family: inherit; font-size: 0.85rem; font-weight: 700; padding: 9px 16px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); }
+  .btn-save { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-del { background: var(--paper); color: var(--sev-red); }
+  .btn-del:hover { background: var(--sev-red-soft); }
+  .cont-empty { color: var(--ink-soft); font-size: 0.88rem; }
+  .cont-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  @media (max-width: 640px) { .cont-grid { grid-template-columns: 1fr; } }
+
   .admin-gate { max-width: 380px; margin: 40px auto; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 30px 28px; }
   .admin-gate h2 { margin: 0 0 6px; font-size: 1.2rem; font-weight: 800; }
   .admin-gate p.sub { margin: 0 0 20px; color: var(--ink-soft); font-size: 0.9rem; }
@@ -465,6 +494,12 @@
     </div>
 
     <div id="admin-content">
+    <div class="admin-nav">
+      <button class="active" data-panel="richieste">Richieste</button>
+      <button data-panel="contenuti">Contenuti</button>
+    </div>
+
+    <div id="panel-richieste">
     <div class="stat-strip">
       <div class="stat-card rosso"><div class="n mono" id="stat-rosse">0</div><div class="l">Rosse aperte</div></div>
       <div class="stat-card giallo"><div class="n mono" id="stat-gialle">0</div><div class="l">Gialle aperte</div></div>
@@ -476,6 +511,17 @@
 
     <div class="note-banner">
       <b>Come leggere gli stati:</b> <span class="status-pill done">Risposta AI — bastata</span> il dealer ha confermato che la risposta automatica è stata sufficiente · <span class="status-pill wait">In attesa feedback</span> il dealer non ha ancora risposto · <span class="status-pill simone">Intervento Simone</span> il dealer ha insistito e la pratica è stata inoltrata via email al collega (CF + opportunity). I bottoni ✓/✕ ti servono per validare la qualità della risposta automatica.
+    </div>
+    </div><!-- /#panel-richieste -->
+
+    <div id="panel-contenuti" hidden>
+      <p class="contenuti-intro">Qui modifichi <b>procedure, risposte e offerte</b>: le modifiche valgono <b>subito</b>, senza pubblicare nulla. I <b>negozi</b> (SIS/SUB) si gestiscono invece dal <b>Pannello Segnalazioni</b>: quello che aggiungi lì vale automaticamente anche qui.</p>
+
+      <div class="cont-head"><h3>Procedure e risposte</h3><button class="btn-add" id="add-procedura">+ Aggiungi procedura</button></div>
+      <div id="lista-procedure"></div>
+
+      <div class="cont-head"><h3>Offerte</h3><button class="btn-add" id="add-offerta">+ Aggiungi offerta</button></div>
+      <div id="lista-offerte"></div>
     </div>
     </div><!-- /#admin-content -->
   </section>
@@ -778,6 +824,153 @@
     const h = Math.floor(m/60); if (h < 24) return h+' h fa';
     return Math.floor(h/24)+' g fa';
   }
+
+  // ------- Pannello Contenuti (procedure + offerte) -------
+  const adminNav = document.querySelectorAll('.admin-nav button');
+  adminNav.forEach(b => b.addEventListener('click', () => {
+    adminNav.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const p = b.dataset.panel;
+    document.getElementById('panel-richieste').hidden = p !== 'richieste';
+    document.getElementById('panel-contenuti').hidden = p !== 'contenuti';
+    if (p === 'contenuti') loadContenuti();
+  }));
+
+  async function apiContenuti(method, data){
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (data) opts.body = JSON.stringify(data);
+    const res = await fetch('/api/contenuti', opts);
+    return res.json();
+  }
+  function flash(btn, msg){
+    const old = btn.textContent; btn.textContent = msg;
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  }
+  function attr(v){ return esc(v).replace(/"/g, '&quot;'); }
+
+  async function loadContenuti(){
+    const d = await apiContenuti('GET');
+    const lp = document.getElementById('lista-procedure');
+    const lo = document.getElementById('lista-offerte');
+    if (!d || d.error){
+      lp.innerHTML = '<p class="cont-empty">Impossibile caricare i contenuti: ' + esc((d && d.error) || 'errore') + '</p>';
+      lo.innerHTML = ''; return;
+    }
+    renderProcedure(d.procedure || []);
+    renderOfferte(d.offerte || []);
+  }
+
+  function renderProcedure(list){
+    const c = document.getElementById('lista-procedure');
+    c.innerHTML = list.map(p => `
+      <details class="cont-item">
+        <summary>
+          <span class="ci-title">${esc(p.titolo || '(senza titolo)')}</span>
+          <span class="ci-badge">${p.tipo === 'link' ? 'link' : 'testo'}</span>
+          ${p.attiva ? '' : '<span class="ci-off">disattivata</span>'}
+        </summary>
+        <div class="cont-body" data-id="${attr(p.id)}">
+          <label class="field"><span class="label-text">Titolo</span><input type="text" data-f="titolo" value="${attr(p.titolo || '')}"></label>
+          <label class="field"><span class="label-text">Parole chiave (separate da virgola) — servono all'assistente per riconoscere la domanda</span><input type="text" data-f="keywords" value="${attr(p.keywords || '')}"></label>
+          <label class="field"><span class="label-text">Tipo di risposta</span>
+            <select data-f="tipoRisposta">
+              <option value="text"${p.tipo !== 'link' ? ' selected' : ''}>Testo (risposta scritta)</option>
+              <option value="link"${p.tipo === 'link' ? ' selected' : ''}>Link (guida esterna)</option>
+            </select>
+          </label>
+          <label class="field"><span class="label-text">Risposta</span><textarea data-f="risposta" rows="7">${esc(p.risposta || '')}</textarea></label>
+          <label class="field"><span class="label-text">URL della guida (solo se tipo = Link)</span><input type="text" data-f="url" value="${attr(p.url || '')}"></label>
+          <label class="cont-check"><input type="checkbox" data-f="attiva" ${p.attiva ? 'checked' : ''}> Attiva (se tolta, l'assistente non la userà)</label>
+          <div class="cont-actions">
+            <button class="btn-save" data-act="save">Salva</button>
+            <button class="btn-del" data-act="del">Elimina</button>
+          </div>
+        </div>
+      </details>`).join('') || '<p class="cont-empty">Nessuna procedura.</p>';
+  }
+
+  function renderOfferte(list){
+    const c = document.getElementById('lista-offerte');
+    c.innerHTML = list.map(o => `
+      <details class="cont-item">
+        <summary>
+          <span class="ci-title">${esc(o.nome || '(senza nome)')}</span>
+          <span class="ci-badge">${esc(o.tipo || '')}</span>
+          ${o.attiva ? '' : '<span class="ci-off">disattivata</span>'}
+        </summary>
+        <div class="cont-body" data-id="${attr(o.id)}">
+          <label class="field"><span class="label-text">Nome offerta</span><input type="text" data-f="nome" value="${attr(o.nome || '')}"></label>
+          <div class="cont-grid">
+            <label class="field"><span class="label-text">Tipo (Fissa / Variabile)</span><input type="text" data-f="tipoOfferta" value="${attr(o.tipo || '')}"></label>
+            <label class="field"><span class="label-text">Scadenza</span><input type="text" data-f="scadenza" value="${attr(o.scadenza || '')}"></label>
+            <label class="field"><span class="label-text">Durata</span><input type="text" data-f="durata" value="${attr(o.durata || '')}"></label>
+            <label class="field"><span class="label-text">Commercializzazione</span><input type="text" data-f="comm" value="${attr(o.comm || '')}"></label>
+            <label class="field"><span class="label-text">Costo luce</span><input type="text" data-f="luce" value="${attr(o.luce || '')}"></label>
+            <label class="field"><span class="label-text">Costo gas</span><input type="text" data-f="gas" value="${attr(o.gas || '')}"></label>
+          </div>
+          <label class="cont-check"><input type="checkbox" data-f="attiva" ${o.attiva ? 'checked' : ''}> Attiva (se tolta, non viene proposta ai dealer)</label>
+          <div class="cont-actions">
+            <button class="btn-save" data-act="save">Salva</button>
+            <button class="btn-del" data-act="del">Elimina</button>
+          </div>
+        </div>
+      </details>`).join('') || '<p class="cont-empty">Nessuna offerta.</p>';
+  }
+
+  function leggiCampi(box){
+    const out = {};
+    box.querySelectorAll('[data-f]').forEach(el => {
+      out[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    return out;
+  }
+
+  document.getElementById('lista-procedure').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    const box = btn.closest('.cont-body'); const id = box.dataset.id;
+    if (btn.dataset.act === 'save'){
+      btn.disabled = true;
+      const r = await apiContenuti('PUT', Object.assign({ tipo: 'procedura', id }, leggiCampi(box)));
+      btn.disabled = false;
+      flash(btn, r && r.ok ? 'Salvato ✓' : 'Errore');
+      if (r && r.ok) loadContenuti();
+    } else if (btn.dataset.act === 'del'){
+      if (!confirm('Eliminare definitivamente questa procedura?')) return;
+      await apiContenuti('DELETE', { tipo: 'procedura', id });
+      loadContenuti();
+    }
+  });
+
+  document.getElementById('lista-offerte').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    const box = btn.closest('.cont-body'); const id = box.dataset.id;
+    if (btn.dataset.act === 'save'){
+      btn.disabled = true;
+      const r = await apiContenuti('PUT', Object.assign({ tipo: 'offerta', id }, leggiCampi(box)));
+      btn.disabled = false;
+      flash(btn, r && r.ok ? 'Salvato ✓' : 'Errore');
+      if (r && r.ok) loadContenuti();
+    } else if (btn.dataset.act === 'del'){
+      if (!confirm('Eliminare definitivamente questa offerta?')) return;
+      await apiContenuti('DELETE', { tipo: 'offerta', id });
+      loadContenuti();
+    }
+  });
+
+  document.getElementById('add-procedura').addEventListener('click', async () => {
+    const titolo = prompt('Titolo della nuova procedura:');
+    if (!titolo) return;
+    const r = await apiContenuti('POST', { tipo: 'procedura', titolo, tipoRisposta: 'text', risposta: '', keywords: '' });
+    if (r && r.error) alert('Errore: ' + r.error);
+    loadContenuti();
+  });
+  document.getElementById('add-offerta').addEventListener('click', async () => {
+    const nome = prompt('Nome della nuova offerta:');
+    if (!nome) return;
+    const r = await apiContenuti('POST', { tipo: 'offerta', nome, tipoOfferta: 'Variabile' });
+    if (r && r.error) alert('Errore: ' + r.error);
+    loadContenuti();
+  });
 </script>
 
 </html>
