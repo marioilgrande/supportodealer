@@ -421,9 +421,21 @@
             </div>
           </div>
 
+          <!-- che tipo di pratica? (prima dei dati cliente) -->
+          <div id="c-tipo-pratica" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">Di che tipo di pratica si tratta?</p>
+            <div class="clarify-chips">
+              <button type="button" class="chip" data-pratica="SUBENTRO">Subentro</button>
+              <button type="button" class="chip" data-pratica="SWITCH">Switch</button>
+              <button type="button" class="chip" data-pratica="SWITCH CON VOLTURA">Switch con voltura</button>
+              <button type="button" class="chip" data-pratica="VOLTURA INTERNA">Voltura interna</button>
+            </div>
+          </div>
+
           <!-- escalation PRATICA: CF + opportunity per Simone -->
           <div id="c-escalate" class="client-data-block">
-            <p class="client-data-note">Perfetto. Lasciami i dati del cliente così Simone controlla la pratica a portale:</p>
+            <p class="client-data-note">Perfetto, pratica di <b id="c-escalate-tipo">—</b>. Lasciami i dati del cliente così Simone la controlla a portale:</p>
             <label class="field">
               <span class="label-text">Codice fiscale cliente <em>obbligatorio</em></span>
               <input type="text" id="f-cf" placeholder="es. RSSMRA80A01H501U" />
@@ -549,11 +561,12 @@
   let currentTicketId = null;
   let currentCodici = null;
   let currentSupportReason = null;
+  let currentTipoPratica = null;
   const negozioEl = () => document.getElementById('f-negozio').value.trim();
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-answer','c-clarify','c-portale','c-support','c-help-type','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
+    ['c-greeting','c-answer','c-clarify','c-portale','c-support','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -704,12 +717,22 @@
     hidePanels();
     // Se si parlava già della pratica di un cliente, i dati da chiedere sono ovvi:
     // vado dritto a CF + opportunity senza far scegliere pratica/altro.
-    if (currentSupportReason === 'cliente') document.getElementById('c-escalate').classList.add('show');
+    if (currentSupportReason === 'cliente') document.getElementById('c-tipo-pratica').classList.add('show');
     else document.getElementById('c-help-type').classList.add('show');
   });
 
   // ------- Tipo di aiuto: pratica o altro -------
-  document.getElementById('ht-pratica').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate').classList.add('show'); });
+  document.getElementById('ht-pratica').addEventListener('click', () => { hidePanels(); document.getElementById('c-tipo-pratica').classList.add('show'); });
+
+  // Scelta del tipo di pratica -> poi si chiedono CF e opportunity
+  document.querySelectorAll('#c-tipo-pratica .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      currentTipoPratica = chip.dataset.pratica;
+      document.getElementById('c-escalate-tipo').textContent = currentTipoPratica;
+      hidePanels();
+      document.getElementById('c-escalate').classList.add('show');
+    });
+  });
   document.getElementById('ht-altro').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate-altro').classList.add('show'); });
 
   function mostraSimone(codici){
@@ -725,7 +748,7 @@
     if (!cf || !opp){ hint.style.display = 'block'; return; }
     hint.style.display = 'none';
     const btn = document.getElementById('f-escalate-submit'); btn.disabled = true; const t = btn.textContent; btn.textContent = 'Invio…';
-    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'pratica', cf, opportunity: opp, nota: document.getElementById('f-nota-controllo').value });
+    const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'pratica', tipoPratica: currentTipoPratica, cf, opportunity: opp, nota: document.getElementById('f-nota-controllo').value });
     btn.disabled = false; btn.textContent = t;
     if (r && r.ok) mostraSimone(r);
     else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
@@ -756,7 +779,7 @@
     document.getElementById('escalate-hint').style.display = 'none';
     document.getElementById('altro-hint').style.display = 'none';
     document.getElementById('allegati-fields').classList.remove('show');
-    currentTicketId = null; currentCodici = null;
+    currentTicketId = null; currentCodici = null; currentTipoPratica = null; currentSupportReason = null;
     hidePanels();
   });
 
@@ -827,6 +850,7 @@
     return `<article class="ticket" style="--stripe:var(${varMap[key]})">
       <div class="ticket-top"><span class="ticket-store">${esc(t.negozio||'—')}</span><span class="ticket-time mono">${timeago(t.created_at)}</span></div>
       <span class="ticket-cat" style="background:var(${softMap[key]}); color:var(${varMap[key]})">${esc(t.categoria)}</span>
+      ${t.tipo_pratica ? `<span class="ticket-cat" style="background:var(--accent-soft); color:var(--accent-ink)">${esc(t.tipo_pratica)}</span>` : ''}
       <p class="ticket-note">${esc(t.messaggio)}</p>
       <div class="ticket-bottom">
         <span class="status-pill ${cls}">${label}</span>

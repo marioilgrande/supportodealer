@@ -13,7 +13,7 @@ export default async function handler(request) {
       const rows = await sql`
         SELECT id, codice, negozio, sis_sub, agenzia, categoria, colore,
                messaggio, esito, cf_cliente, num_opportunity, nota_controllo,
-               risposta_ok, created_at
+               tipo_pratica, risposta_ok, created_at
         FROM ticket
         ORDER BY created_at DESC
         LIMIT 200
