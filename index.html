@@ -296,6 +296,7 @@
   .review-btns { display: flex; gap: 4px; }
   .review-btns button { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; width: 24px; height: 24px; font-size: 0.75rem; cursor: pointer; color: var(--ink-soft); }
   .review-btns button:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+  .review-btns .btn-trash:hover { background: var(--sev-red-soft); border-color: var(--sev-red); color: var(--sev-red); }
 
   .note-banner { margin-top: 26px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 0.85rem; color: var(--ink-soft); line-height: 1.5; }
   .note-banner b { color: var(--ink); }
@@ -809,7 +810,12 @@
     }).join('');
     board.querySelectorAll('.review-btns button').forEach(b => {
       b.addEventListener('click', async () => {
-        await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: Number(b.dataset.id), rispostaOk: b.dataset.ok === '1' }) });
+        if (b.dataset.del === '1'){
+          if (!confirm('Eliminare definitivamente questa richiesta?')) return;
+          await fetch('/api/tickets?id=' + encodeURIComponent(b.dataset.id), { method:'DELETE' });
+        } else {
+          await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: Number(b.dataset.id), rispostaOk: b.dataset.ok === '1' }) });
+        }
         loadDashboard();
       });
     });
@@ -824,7 +830,7 @@
       <p class="ticket-note">${esc(t.messaggio)}</p>
       <div class="ticket-bottom">
         <span class="status-pill ${cls}">${label}</span>
-        <div class="review-btns"><button title="Risposta OK" data-id="${t.id}" data-ok="1">✓</button><button title="Da migliorare" data-id="${t.id}" data-ok="0">✕</button></div>
+        <div class="review-btns"><button title="Risposta OK" data-id="${t.id}" data-ok="1">✓</button><button title="Da migliorare" data-id="${t.id}" data-ok="0">✕</button><button class="btn-trash" title="Elimina richiesta" data-id="${t.id}" data-del="1">🗑</button></div>
       </div>
     </article>`;
   }

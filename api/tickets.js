@@ -39,6 +39,15 @@ export default async function handler(request) {
       return json({ ok: true });
     }
 
+    // Elimina una richiesta (utile per ripulire le prove)
+    if (request.method === 'DELETE') {
+      const url = new URL(request.url);
+      const id = Number(url.searchParams.get('id'));
+      if (!id) return json({ error: 'id mancante' }, 400);
+      await sql`DELETE FROM ticket WHERE id = ${id}`;
+      return json({ ok: true });
+    }
+
     return json({ error: 'Method not allowed' }, 405);
   } catch (err) {
     return json({ error: 'DB: ' + (err.message || 'errore') }, 500);
