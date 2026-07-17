@@ -333,7 +333,10 @@
 
           <label class="field">
             <span class="label-text">Il tuo negozio</span>
-            <input type="text" id="f-negozio" list="negozi-list" placeholder="Inizia a scrivere il nome del tuo negozio" autocomplete="off" />
+            <input type="text" id="f-negozio" name="negozio" list="negozi-list"
+                   placeholder="Inizia a scrivere il nome del tuo negozio"
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                   data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore />
             <datalist id="negozi-list">
               <option value="LO TURCO"></option>
               <option value="CEM DI MASELLA"></option>
@@ -367,6 +370,13 @@
             <span class="tag" id="c-answer-tag">Risposta</span>
             <div id="c-answer-body" class="procedure-body"></div>
             <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-answer-link" style="display:none; margin-top:10px;">Apri la guida &rarr;</a>
+          </div>
+
+          <!-- quale negozio? (nome scritto incompleto o ambiguo) -->
+          <div id="c-negozio" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">Ci sono più negozi con un nome simile: quale sei?</p>
+            <div class="clarify-chips" id="c-negozio-chips"></div>
           </div>
 
           <!-- l'AI chiede: 3 percorsi -->
@@ -518,18 +528,20 @@
   <section class="view" id="view-dash">
 
     <!-- Gate: solo l'amministratore -->
-    <div class="admin-gate" id="admin-gate">
+    <!-- Il login sta in un <form> suo: così il browser associa le credenziali SOLO a questi
+         campi e non le propone (né chiede di salvarle) sul campo "Il tuo negozio". -->
+    <form class="admin-gate" id="admin-gate" autocomplete="on">
       <h2>Area riservata</h2>
       <p class="sub">La dashboard è visibile solo all'amministratore.</p>
       <label class="field"><span class="label-text">Email</span>
-        <input type="email" id="admin-email" placeholder="marioisernia@gmail.com" autocomplete="off" />
+        <input type="email" id="admin-email" name="username" placeholder="nome@e2kdistribution.com" autocomplete="username" />
       </label>
       <label class="field"><span class="label-text">Password</span>
-        <input type="password" id="admin-pw" placeholder="••••••••" autocomplete="off" />
+        <input type="password" id="admin-pw" name="password" placeholder="••••••••" autocomplete="current-password" />
       </label>
-      <button class="submit-btn" id="admin-login-btn">Accedi</button>
+      <button type="submit" class="submit-btn" id="admin-login-btn">Accedi</button>
       <p class="demo-note" id="admin-error" style="display:none;color:var(--sev-red)"></p>
-    </div>
+    </form>
 
     <div id="admin-content">
     <div class="admin-nav">
@@ -588,7 +600,7 @@
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-answer','c-clarify','c-portale','c-support','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
+    ['c-greeting','c-negozio','c-answer','c-clarify','c-portale','c-support','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -642,6 +654,21 @@
     cliente: 'Per le verifiche su un cliente ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:',
     notresolved: 'Mi dispiace non esserti bastato! A questo punto ti conviene chiamare il Dealer Support e comunicare questi codici per farti identificare:'
   };
+  // Nome negozio ambiguo (es. "andrea"): faccio scegliere, poi rimando la stessa richiesta.
+  function renderScelteNegozio(candidati, messaggio){
+    const box = document.getElementById('c-negozio-chips');
+    box.innerHTML = (candidati || []).map(n =>
+      `<button type="button" class="chip" data-negozio="${esc(n).replace(/"/g, '&quot;')}">${esc(n)}</button>`
+    ).join('');
+    box.querySelectorAll('.chip').forEach(b => {
+      b.addEventListener('click', () => {
+        document.getElementById('f-negozio').value = b.dataset.negozio;
+        inviaRichiesta(messaggio);
+      });
+    });
+    document.getElementById('c-negozio').classList.add('show');
+  }
+
   function renderSupport(reason){
     currentSupportReason = reason || 'cliente';
     document.getElementById('c-support-msg').textContent = SUPPORT_MSG[reason] || SUPPORT_MSG.cliente;
@@ -665,6 +692,8 @@
     if (!r || r.error){ showGreeting('Ops, qualcosa è andato storto. Riprova tra poco 🙏'); return; }
     currentTicketId = r.ticketId || null;
     currentCodici = r.codici || currentCodici;
+    // Nome negozio ambiguo: chiedo quale, poi rimando la stessa domanda
+    if (r.type === 'negozio-ambiguo'){ renderScelteNegozio(r.candidati, messaggio); return; }
     if (r.type === 'answer') renderAnswer(r.answer);
     else if (r.type === 'offers') renderOffers(r.offers);
     else if (r.type === 'support') renderSupport(r.supportReason);
@@ -833,7 +862,9 @@
     document.getElementById('admin-content').classList.add('show');
     loadDashboard();
   }
-  document.getElementById('admin-login-btn').addEventListener('click', async () => {
+  // Sull'invio del form: funziona sia col pulsante sia premendo Invio.
+  document.getElementById('admin-gate').addEventListener('submit', async (e) => {
+    e.preventDefault();
     const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-pw').value;
     const err = document.getElementById('admin-error');

@@ -2,7 +2,7 @@ import { json } from '../lib/auth.js';
 import { sql, codiceTicket } from '../lib/db.js';
 import { interpret } from '../lib/gemini.js';
 import { getProcedure, getProceduraById, filtraOfferte, matchProcedura, rispostaFissa } from '../lib/kb.js';
-import { codiciNegozio } from '../lib/negozi.js';
+import { cercaNegozio } from '../lib/negozi.js';
 
 export const config = { runtime: 'edge' };
 
@@ -38,13 +38,20 @@ export default async function handler(request) {
   const messaggio = (body.messaggio || '').toString().slice(0, 2000);
   if (!messaggio.trim()) return json({ error: 'Messaggio vuoto' }, 400);
 
+  // 0) Il negozio: se il nome scritto somiglia a piu' negozi (es. "andrea"), non
+  //    tiriamo a indovinare: chiediamo quale, prima di fare qualsiasi altra cosa.
+  const ricerca = await cercaNegozio(negozioInput);
+  if (ricerca.stato === 'ambiguo') {
+    return json({ ticketId: null, type: 'negozio-ambiguo', candidati: ricerca.candidati });
+  }
+  const codici = { trovato: ricerca.stato === 'trovato', nome: ricerca.nome, sisSub: ricerca.sisSub, agenzia: ricerca.agenzia };
+
   // 1) Interpreta (Gemini, con fallback locale). Le procedure arrivano dal DB.
   const procedure = await getProcedure();
   let intp = null;
   try { intp = await interpret(messaggio, procedure); } catch { /* fallback */ }
   if (!intp || !intp.intent) intp = await localInterpret(messaggio);
 
-  const codici = await codiciNegozio(negozioInput);
   const codiciOut = { nome: codici.nome || negozioInput, sisSub: codici.sisSub, agenzia: codici.agenzia, trovato: codici.trovato };
   const colore = COLORE[intp.intent] || 'giallo';
   const categoria = CATEGORIA[intp.intent] || 'Da chiarire';
