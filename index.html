@@ -427,7 +427,7 @@
             <span class="tag">Analisi bolletta</span>
             <div id="c-bolletta-recap" class="procedure-body"></div>
             <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-bolletta-link" style="margin-top:12px;">📊 Apri il confronto con le offerte ACEA &rarr;</a>
-            <p class="field-hint" style="margin-top:10px;">Il risparmio è stimato dal comparatore ACEA sui dati letti dalla bolletta, al netto di imposte e IVA.</p>
+            <p class="field-hint" style="margin-top:10px;">Il confronto è sulla sola <b>spesa di vendita</b> (la materia): rete, oneri e imposte sono uguali per tutti i fornitori. Il risparmio è stimato dal comparatore ACEA con i suoi indici aggiornati.</p>
           </div>
 
           <!-- quale negozio? (nome scritto incompleto o ambiguo) -->
@@ -814,10 +814,10 @@
     if (testa.length) html += '<p style="margin:0 0 10px;">' + testa.join(' · ') + '</p>';
     if (rp.gas) html += '<div class="promo-item"><div class="promo-name">Gas</div><div class="promo-prices">'
       + '<span><b>Consumo:</b> ' + esc(rp.gas.smc) + ' Smc</span>'
-      + '<span><b>Costo attuale (netto imposte):</b> ' + eur(rp.gas.costoAttuale) + '</span></div></div>';
+      + '<span><b>Spesa di vendita (confrontabile):</b> ' + eur(rp.gas.costoAttuale) + '</span></div></div>';
     if (rp.luce) html += '<div class="promo-item"><div class="promo-name">Luce</div><div class="promo-prices">'
       + '<span><b>Consumo:</b> ' + esc(rp.luce.kwh) + ' kWh</span>'
-      + '<span><b>Costo attuale (netto imposte):</b> ' + eur(rp.luce.costoAttuale) + '</span></div></div>';
+      + '<span><b>Spesa di vendita (confrontabile):</b> ' + eur(rp.luce.costoAttuale) + '</span></div></div>';
     document.getElementById('c-bolletta-recap').innerHTML = html || 'Dati letti dalla bolletta.';
     document.getElementById('c-bolletta-link').href = r.url;
     showGreeting('Ho letto la bolletta! Ecco cosa risulta 👇 Premi il pulsante per vedere il confronto con ACEA.');
