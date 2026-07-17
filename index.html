@@ -402,9 +402,10 @@
           <div id="allegati-fields" class="client-data-block">
             <label class="field" style="margin-bottom:2px;">
               <span class="label-text">Allega la bolletta <em>consigliato</em></span>
-              <input type="file" id="f-allegati" multiple />
-              <span class="field-hint" id="allegati-hint">Foto o PDF della bolletta del cliente: fino a 5 file.</span>
+              <input type="file" id="f-allegati" accept="application/pdf,.pdf" />
+              <span class="field-hint" id="allegati-hint">Carica il PDF originale della bolletta (non una foto).</span>
             </label>
+            <button type="button" class="submit-btn body-face" id="f-analizza" style="margin-top:10px;">📊 Analizza la bolletta e confronta con ACEA</button>
           </div>
 
           <button class="submit-btn body-face" id="f-submit">Chiedi</button>
@@ -419,6 +420,14 @@
             <span class="tag" id="c-answer-tag">Risposta</span>
             <div id="c-answer-body" class="procedure-body"></div>
             <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-answer-link" style="display:none; margin-top:10px;">Apri la guida &rarr;</a>
+          </div>
+
+          <!-- analisi bolletta: dati letti + link al comparatore precompilato -->
+          <div class="ai-answer" id="c-bolletta">
+            <span class="tag">Analisi bolletta</span>
+            <div id="c-bolletta-recap" class="procedure-body"></div>
+            <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-bolletta-link" style="margin-top:12px;">📊 Apri il confronto con le offerte ACEA &rarr;</a>
+            <p class="field-hint" style="margin-top:10px;">Il risparmio è stimato dal comparatore ACEA sui dati letti dalla bolletta, al netto di imposte e IVA.</p>
           </div>
 
           <!-- quale negozio? (nome scritto incompleto o ambiguo) -->
@@ -665,7 +674,7 @@
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-negozio','c-answer','c-clarify','c-portale','c-support','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
+    ['c-greeting','c-negozio','c-answer','c-bolletta','c-clarify','c-portale','c-support','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -773,14 +782,80 @@
 
   // Allegati: mostra solo se si parla di bolletta
   document.getElementById('f-nota').addEventListener('input', (e) => {
-    const show = /bolletta|analisi|conviene|confront|preventiv/.test(e.target.value.toLowerCase());
+    const show = /bolletta|analisi|conviene|confront|preventiv|risparmi/.test(e.target.value.toLowerCase());
     document.getElementById('allegati-fields').classList.toggle('show', show);
   });
   document.getElementById('f-allegati').addEventListener('change', (e) => {
     const hint = document.getElementById('allegati-hint');
-    if (e.target.files.length > 5){ hint.textContent = 'Massimo 5 file.'; hint.classList.add('warn'); }
-    else { hint.textContent = e.target.files.length ? e.target.files.length + ' file selezionati.' : 'Foto o PDF della bolletta del cliente: fino a 5 file.'; hint.classList.remove('warn'); }
+    const f = e.target.files[0];
+    if (!f){ hint.textContent = 'Carica il PDF originale della bolletta (non una foto).'; hint.classList.remove('warn'); return; }
+    if (!/pdf/i.test(f.type) && !/\.pdf$/i.test(f.name)){ hint.textContent = 'Serve il PDF originale della bolletta (non una foto).'; hint.classList.add('warn'); }
+    else { hint.textContent = f.name; hint.classList.remove('warn'); }
   });
+
+  // ------- Analisi bolletta: legge il PDF e apre il comparatore precompilato -------
+  function leggiPdfBase64(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => { const s = String(r.result || ''); resolve(s.slice(s.indexOf(',') + 1)); };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+  function renderBolletta(r){
+    const rp = r.riepilogo || {};
+    const eur = (n) => '€ ' + Number(n||0).toFixed(2).replace('.', ',');
+    const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    let html = '';
+    const testa = [];
+    if (rp.fornitore) testa.push('Fornitore attuale: <b>' + esc(rp.fornitore) + '</b>');
+    if (rp.nomeOfferta) testa.push('Offerta: <b>' + esc(rp.nomeOfferta) + '</b>');
+    if (rp.mesi && rp.mesi.length) testa.push('Periodo: <b>' + rp.mesi.map(cap).map(esc).join(', ') + '</b>');
+    if (testa.length) html += '<p style="margin:0 0 10px;">' + testa.join(' · ') + '</p>';
+    if (rp.gas) html += '<div class="promo-item"><div class="promo-name">Gas</div><div class="promo-prices">'
+      + '<span><b>Consumo:</b> ' + esc(rp.gas.smc) + ' Smc</span>'
+      + '<span><b>Costo attuale (netto imposte):</b> ' + eur(rp.gas.costoAttuale) + '</span></div></div>';
+    if (rp.luce) html += '<div class="promo-item"><div class="promo-name">Luce</div><div class="promo-prices">'
+      + '<span><b>Consumo:</b> ' + esc(rp.luce.kwh) + ' kWh</span>'
+      + '<span><b>Costo attuale (netto imposte):</b> ' + eur(rp.luce.costoAttuale) + '</span></div></div>';
+    document.getElementById('c-bolletta-recap').innerHTML = html || 'Dati letti dalla bolletta.';
+    document.getElementById('c-bolletta-link').href = r.url;
+    showGreeting('Ho letto la bolletta! Ecco cosa risulta 👇 Premi il pulsante per vedere il confronto con ACEA.');
+    document.getElementById('c-bolletta').classList.add('show');
+  }
+  async function analizzaBolletta(){
+    const file = document.getElementById('f-allegati').files[0];
+    const hint = document.getElementById('allegati-hint');
+    if (!file){ hint.textContent = 'Prima allega il PDF della bolletta.'; hint.classList.add('warn'); return; }
+    if (!/pdf/i.test(file.type) && !/\.pdf$/i.test(file.name)){ hint.textContent = 'Serve il PDF originale della bolletta (non una foto).'; hint.classList.add('warn'); return; }
+    if (file.size > 8 * 1024 * 1024){ hint.textContent = 'Il file è troppo grande (max 8 MB).'; hint.classList.add('warn'); return; }
+
+    const btn = document.getElementById('f-analizza');
+    btn.disabled = true; const old = btn.textContent; btn.textContent = 'Sto leggendo la bolletta…';
+    let r;
+    try {
+      const pdf = await leggiPdfBase64(file);
+      r = await apiPost('/api/bolletta', { pdf, mime: file.type || 'application/pdf', negozio: negozioEl(), nota: document.getElementById('f-nota').value.trim() });
+    } catch { r = { error: 'rete' }; }
+    btn.disabled = false; btn.textContent = old;
+
+    hidePanels();
+    document.getElementById('form-step').style.display = 'none';
+    document.getElementById('confirm-panel').classList.add('show');
+
+    if (!r || r.error || r.type === 'no-pdf' || r.type === 'illeggibile'){
+      const msg = (r && r.error) ? r.error : 'Non sono riuscito a leggere la bolletta. Riprova con il PDF originale.';
+      document.getElementById('c-bolletta-recap').innerHTML = esc(msg);
+      document.getElementById('c-bolletta-link').style.display = 'none';
+      showGreeting('Ops 🙏');
+      document.getElementById('c-bolletta').classList.add('show');
+      return;
+    }
+    currentTicketId = r.ticketId || null;
+    document.getElementById('c-bolletta-link').style.display = '';
+    renderBolletta(r);
+  }
+  document.getElementById('f-analizza').addEventListener('click', analizzaBolletta);
 
   // ------- 3 percorsi -------
   const portaleTopics = [
