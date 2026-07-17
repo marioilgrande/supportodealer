@@ -53,6 +53,7 @@ export default async function handler(request) {
   // 2) Payload per il comparatore (stesse chiavi dei campi del comparatore)
   const payload = {
     tipoCliente: dati.tipoCliente === 'business' ? 'business' : 'domestico',
+    nomeCliente: (dati.intestatario || '').toString().slice(0, 120),
     mesiLuce: mesi,
     mesiGas: mesi,
     kwhFatturati: l ? num(l.kwhFatturati) : '',
@@ -68,6 +69,7 @@ export default async function handler(request) {
   const riepilogo = {
     servizio: dati.servizio || (g && l ? 'entrambi' : g ? 'gas' : 'luce'),
     tipoCliente: payload.tipoCliente,
+    intestatario: dati.intestatario || null,
     fornitore: dati.fornitore || null,
     nomeOfferta: dati.nomeOfferta || null,
     mesi,

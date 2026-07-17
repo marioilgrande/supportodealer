@@ -808,6 +808,7 @@
     const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
     let html = '';
     const testa = [];
+    if (rp.intestatario) testa.push('Cliente: <b>' + esc(rp.intestatario) + '</b>');
     if (rp.fornitore) testa.push('Fornitore attuale: <b>' + esc(rp.fornitore) + '</b>');
     if (rp.nomeOfferta) testa.push('Offerta: <b>' + esc(rp.nomeOfferta) + '</b>');
     if (rp.mesi && rp.mesi.length) testa.push('Periodo: <b>' + rp.mesi.map(cap).map(esc).join(', ') + '</b>');
