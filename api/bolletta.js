@@ -33,17 +33,18 @@ export default async function handler(request) {
   if (!pdf) return json({ error: 'Nessun file' }, 400);
   // Niente OCR: accettiamo solo PDF con testo (le foto/scansioni non sono affidabili).
   if (!/pdf/i.test(mime)) {
-    return json({ type: 'no-pdf', error: 'Per l\'analisi serve la bolletta in PDF (non una foto).' });
+    return json({ type: 'no-pdf', error: 'Per l\'analisi serve la bolletta in PDF: carica il PDF originale del fornitore, non una foto.' });
   }
 
   // 1) Estrazione dati dalla bolletta (Gemini legge il PDF)
   let dati = null;
   try { dati = await estraiBolletta(pdf, mime); } catch { /* gestito sotto */ }
+  const AVVISO_ORIGINALE = ' Ricorda: dev\'essere il PDF originale scaricato dal sito o dall\'app del fornitore. Una scansione o una foto salvata in PDF non contiene il testo, quindi non riesco a leggere i dati.';
   if (!dati || (!dati.gas && !dati.luce)) {
-    return json({ type: 'illeggibile', error: 'Non sono riuscito a leggere i dati dalla bolletta. Assicurati che sia il PDF originale (non una foto).' });
+    return json({ type: 'illeggibile', error: 'Non sono riuscito a leggere i dati dalla bolletta.' + AVVISO_ORIGINALE });
   }
   if (dati.affidabile === false) {
-    return json({ type: 'illeggibile', error: dati.note || 'La bolletta non è abbastanza leggibile per un\'analisi affidabile.' });
+    return json({ type: 'illeggibile', error: (dati.note ? dati.note + ' ' : 'La bolletta non è abbastanza leggibile per un\'analisi affidabile.') + AVVISO_ORIGINALE });
   }
 
   const mesi = Array.isArray(dati.mesi) ? dati.mesi.map(m => String(m).toLowerCase().trim()).filter(Boolean) : [];

@@ -403,8 +403,9 @@
             <label class="field" style="margin-bottom:2px;">
               <span class="label-text">Allega la bolletta <em>consigliato</em></span>
               <input type="file" id="f-allegati" accept="application/pdf,.pdf" />
-              <span class="field-hint" id="allegati-hint">Carica il PDF originale della bolletta (non una foto).</span>
+              <span class="field-hint" id="allegati-hint">Nessun file selezionato.</span>
             </label>
+            <p class="field-hint" style="margin:2px 0 0; line-height:1.35;">⚠️ Dev'essere il <b>PDF originale</b> scaricato dal sito o dall'app del fornitore. Una <b>scansione</b> o una <b>foto salvata in PDF</b> non contiene il testo: in quel caso non riesco a leggere i dati.</p>
             <button type="button" class="submit-btn body-face" id="f-analizza" style="margin-top:10px;">📊 Analizza la bolletta e confronta con ACEA</button>
           </div>
 
@@ -788,8 +789,8 @@
   document.getElementById('f-allegati').addEventListener('change', (e) => {
     const hint = document.getElementById('allegati-hint');
     const f = e.target.files[0];
-    if (!f){ hint.textContent = 'Carica il PDF originale della bolletta (non una foto).'; hint.classList.remove('warn'); return; }
-    if (!/pdf/i.test(f.type) && !/\.pdf$/i.test(f.name)){ hint.textContent = 'Serve il PDF originale della bolletta (non una foto).'; hint.classList.add('warn'); }
+    if (!f){ hint.textContent = 'Nessun file selezionato.'; hint.classList.remove('warn'); return; }
+    if (!/pdf/i.test(f.type) && !/\.pdf$/i.test(f.name)){ hint.textContent = 'Serve un file PDF: carica il PDF originale del fornitore, non una foto.'; hint.classList.add('warn'); }
     else { hint.textContent = f.name; hint.classList.remove('warn'); }
   });
 
@@ -828,7 +829,7 @@
     const file = document.getElementById('f-allegati').files[0];
     const hint = document.getElementById('allegati-hint');
     if (!file){ hint.textContent = 'Prima allega il PDF della bolletta.'; hint.classList.add('warn'); return; }
-    if (!/pdf/i.test(file.type) && !/\.pdf$/i.test(file.name)){ hint.textContent = 'Serve il PDF originale della bolletta (non una foto).'; hint.classList.add('warn'); return; }
+    if (!/pdf/i.test(file.type) && !/\.pdf$/i.test(file.name)){ hint.textContent = 'Serve un file PDF: carica il PDF originale del fornitore, non una foto.'; hint.classList.add('warn'); return; }
     if (file.size > 8 * 1024 * 1024){ hint.textContent = 'Il file è troppo grande (max 8 MB).'; hint.classList.add('warn'); return; }
 
     const btn = document.getElementById('f-analizza');
@@ -985,7 +986,7 @@
     document.getElementById('confirm-panel').classList.remove('show');
     // Il negozio NON si svuota: se lo stesso dealer fa un'altra domanda non deve riscriverlo.
     ['f-nota','f-cf','f-opportunity','f-nota-controllo','f-allegati','f-nome','f-contatto-val','f-nome-a','f-contatto-val-a','f-descrizione'].forEach(id => document.getElementById(id).value='');
-    document.getElementById('allegati-hint').textContent = 'Foto o PDF della bolletta del cliente: fino a 5 file.';
+    document.getElementById('allegati-hint').textContent = 'Nessun file selezionato.';
     document.getElementById('allegati-hint').classList.remove('warn');
     document.getElementById('escalate-hint').style.display = 'none';
     document.getElementById('altro-hint').style.display = 'none';
