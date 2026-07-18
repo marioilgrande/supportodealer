@@ -1123,7 +1123,10 @@
   function ticketCard(t, key){
     const varMap = { rosso:'--sev-red', giallo:'--sev-amber', verde:'--sev-green' };
     const softMap = { rosso:'--sev-red-soft', giallo:'--sev-amber-soft', verde:'--sev-green-soft' };
-    const [label, cls] = ESITO[t.esito] || ESITO.in_attesa;
+    let [label, cls] = ESITO[t.esito] || ESITO.in_attesa;
+    // L'analisi bolletta non attende un feedback: si conclude appena fatta.
+    const isBolletta = /analisi bolletta/i.test(t.categoria || '');
+    if (isBolletta && t.esito === 'in_attesa'){ label = 'Analisi completata'; cls = 'done'; }
     return `<article class="ticket" style="--stripe:var(${varMap[key]})">
       <div class="ticket-top"><span class="ticket-store">${esc(t.negozio||'—')}</span><span class="ticket-time mono">${timeago(t.created_at)}</span></div>
       <span class="ticket-cat" style="background:var(${softMap[key]}); color:var(${varMap[key]})">${esc(t.categoria)}</span>
