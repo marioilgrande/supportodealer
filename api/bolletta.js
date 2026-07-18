@@ -37,9 +37,15 @@ export default async function handler(request) {
   }
 
   // 1) Estrazione dati dalla bolletta (Gemini legge il PDF)
-  let dati = null;
-  try { dati = await estraiBolletta(pdf, mime); } catch { /* gestito sotto */ }
+  let estr = { dati: null, errore: 'servizio' };
+  try { estr = await estraiBolletta(pdf, mime); } catch { /* gestito sotto */ }
+  const dati = estr && estr.dati;
   const AVVISO_ORIGINALE = ' Ricorda: dev\'essere il PDF originale scaricato dal sito o dall\'app del fornitore. Una scansione o una foto salvata in PDF non contiene il testo, quindi non riesco a leggere i dati.';
+
+  // Servizio momentaneamente al limite/non disponibile: NON è colpa del file, si riprova
+  if (!dati && estr && (estr.errore === 'quota' || estr.errore === 'servizio' || estr.errore === 'config')) {
+    return json({ type: 'occupato', error: 'Il servizio di lettura bollette è momentaneamente molto richiesto e ha raggiunto il limite. Non è un problema del tuo file: riprova tra qualche minuto o più tardi.' });
+  }
   if (!dati || (!dati.gas && !dati.luce)) {
     return json({ type: 'illeggibile', error: 'Non sono riuscito a leggere i dati dalla bolletta.' + AVVISO_ORIGINALE });
   }

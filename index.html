@@ -845,11 +845,12 @@
     document.getElementById('form-step').style.display = 'none';
     document.getElementById('confirm-panel').classList.add('show');
 
-    if (!r || r.error || r.type === 'no-pdf' || r.type === 'illeggibile'){
+    if (!r || r.error || r.type === 'no-pdf' || r.type === 'illeggibile' || r.type === 'occupato'){
+      const occupato = r && r.type === 'occupato';
       const msg = (r && r.error) ? r.error : 'Non sono riuscito a leggere la bolletta. Riprova con il PDF originale.';
       document.getElementById('c-bolletta-recap').innerHTML = esc(msg);
       document.getElementById('c-bolletta-link').style.display = 'none';
-      showGreeting('Ops 🙏');
+      showGreeting(occupato ? 'Solo un momento ⏳' : 'Ops 🙏');
       document.getElementById('c-bolletta').classList.add('show');
       return;
     }
