@@ -480,6 +480,19 @@
             </div>
           </div>
 
+          <!-- Risposta "Supporto ACEA": numero + SIS/SUB del negozio, senza rimando a Simone -->
+          <div id="c-acea" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q" id="c-acea-msg">Per questo il riferimento giusto è il <b>Dealer Support</b>: chiamali e comunica questi codici per farti identificare.</p>
+            <div class="redirect-phone mono">06 45698346</div>
+            <div class="redirect-codes mono" id="c-acea-codes">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
+            <p class="clarify-q" style="margin-top:14px;">Ti è stato utile?</p>
+            <div class="feedback-btns">
+              <button type="button" class="fb-yes" id="acea-yes">Sì, grazie!</button>
+              <button type="button" class="fb-no" id="acea-no">No</button>
+            </div>
+          </div>
+
           <!-- di che tipo di aiuto hai bisogno? -->
           <div id="c-help-type" class="clarify-block">
             <span class="tag">Assistente</span>
@@ -566,6 +579,12 @@
           <div id="c-final-ok" class="outcome-block outcome-ok">
             <span class="tag">A disposizione</span>
             <p style="margin:0;">Perfetto, sono contento di esserti stato utile! 🙂 Se ti serve altro, scrivimi pure quando vuoi.</p>
+          </div>
+
+          <!-- ESITO Supporto ACEA: non risolto (nessun rimando a Simone) -->
+          <div id="c-final-acea" class="outcome-block outcome-ok">
+            <span class="tag">Dealer Support</span>
+            <p style="margin:0;">Per questo tipo di richiesta il canale corretto è il <b>Dealer Support</b> (<b>06 45698346</b>): riprova a contattarli con i tuoi codici SIS/SUB. Se ti serve altro, scrivimi pure. 🙂</p>
           </div>
 
           <!-- ESITO B: inoltrata a Simone -->
@@ -675,7 +694,7 @@
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-negozio','c-answer','c-bolletta','c-clarify','c-portale','c-support','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-simone']
+    ['c-greeting','c-negozio','c-answer','c-bolletta','c-clarify','c-portale','c-support','c-acea','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-acea','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -750,6 +769,12 @@
     document.getElementById('c-support-codes').textContent = codiciTxt(currentCodici);
     document.getElementById('c-support').classList.add('show');
   }
+  // Risposta "Supporto ACEA": numero + SIS/SUB del negozio. Nessun rimando a Simone.
+  function renderAceaSupport(){
+    document.getElementById('c-acea-codes').textContent = codiciTxt(currentCodici);
+    showGreeting('Ci penso io a indirizzarti 👇');
+    document.getElementById('c-acea').classList.add('show');
+  }
 
   // ------- Invio richiesta -------
   async function inviaRichiesta(messaggio){
@@ -772,6 +797,7 @@
     if (r.type === 'answer') renderAnswer(r.answer);
     else if (r.type === 'offers') renderOffers(r.offers);
     else if (r.type === 'support') renderSupport(r.supportReason);
+    else if (r.type === 'support-acea') renderAceaSupport();
     else document.getElementById('c-clarify').classList.add('show');
   }
 
@@ -901,6 +927,14 @@
   });
   document.getElementById('fb-no').addEventListener('click', async () => {
     await inviaFeedback(false); hidePanels(); renderSupport('notresolved');
+  });
+
+  // Feedback risposta "Supporto ACEA": in nessun caso si passa a Simone.
+  document.getElementById('acea-yes').addEventListener('click', async () => {
+    await inviaFeedback(true); hidePanels(); document.getElementById('c-final-ok').classList.add('show');
+  });
+  document.getElementById('acea-no').addEventListener('click', async () => {
+    await inviaFeedback(false); hidePanels(); document.getElementById('c-final-acea').classList.add('show');
   });
 
   // ------- Dopo aver chiamato il supporto: risolto? -------
@@ -1187,7 +1221,7 @@
       <details class="cont-item">
         <summary>
           <span class="ci-title">${esc(p.titolo || '(senza titolo)')}</span>
-          <span class="ci-badge">${p.tipo === 'link' ? 'link' : 'testo'}</span>
+          <span class="ci-badge">${p.tipo === 'link' ? 'link' : p.tipo === 'supporto' ? 'Supporto ACEA' : 'testo'}</span>
           ${p.attiva ? '' : '<span class="ci-off">disattivata</span>'}
         </summary>
         <div class="cont-body" data-id="${attr(p.id)}">
@@ -1195,11 +1229,13 @@
           <label class="field"><span class="label-text">Parole chiave (separate da virgola) — servono all'assistente per riconoscere la domanda</span><input type="text" data-f="keywords" value="${attr(p.keywords || '')}"></label>
           <label class="field"><span class="label-text">Tipo di risposta</span>
             <select data-f="tipoRisposta">
-              <option value="text"${p.tipo !== 'link' ? ' selected' : ''}>Testo (risposta scritta)</option>
+              <option value="text"${p.tipo !== 'link' && p.tipo !== 'supporto' ? ' selected' : ''}>Testo (risposta scritta)</option>
               <option value="link"${p.tipo === 'link' ? ' selected' : ''}>Link (guida esterna)</option>
+              <option value="supporto"${p.tipo === 'supporto' ? ' selected' : ''}>Supporto ACEA (numero + SIS/SUB del negozio)</option>
             </select>
           </label>
-          <label class="field"><span class="label-text">Risposta</span><textarea data-f="risposta" rows="7">${esc(p.risposta || '')}</textarea></label>
+          <p class="field-hint" style="margin:-4px 0 8px;">Con <b>Supporto ACEA</b> la risposta è automatica (numero Dealer Support + codici SIS/SUB del negozio): i campi Risposta e URL qui sotto vengono ignorati.</p>
+          <label class="field"><span class="label-text">Risposta (solo se tipo = Testo)</span><textarea data-f="risposta" rows="7">${esc(p.risposta || '')}</textarea></label>
           <label class="field"><span class="label-text">URL della guida (solo se tipo = Link)</span><input type="text" data-f="url" value="${attr(p.url || '')}"></label>
           <label class="cont-check"><input type="checkbox" data-f="attiva" ${p.attiva ? 'checked' : ''}> Attiva (se tolta, l'assistente non la userà)</label>
           <div class="cont-actions">

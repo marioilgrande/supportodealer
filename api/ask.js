@@ -63,12 +63,16 @@ export default async function handler(request) {
   const proc = intp.intent === 'portale' && intp.procedureId ? await getProceduraById(intp.procedureId) : null;
 
   if (proc) {
-    if (proc.type === 'text') {
-      payload = { type: 'answer', answer: { kind: 'text', tag: 'Ecco come fare', body: proc.answer } };
-      rispostaAi = proc.answer;
-    } else {
+    if (proc.type === 'supporto') {
+      // Risposta "Supporto ACEA": numero Dealer Support + i codici SIS/SUB del negozio. Nessun rimando a Simone.
+      payload = { type: 'support-acea' };
+      rispostaAi = `Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub || 'da verificare'}).`;
+    } else if (proc.type === 'link') {
       payload = { type: 'answer', answer: { kind: 'link', tag: 'Guida passo-passo', body: 'Ho la guida completa per questa procedura:', url: proc.url } };
       rispostaAi = 'Guida: ' + proc.url;
+    } else {
+      payload = { type: 'answer', answer: { kind: 'text', tag: 'Ecco come fare', body: proc.answer } };
+      rispostaAi = proc.answer;
     }
   } else if (intp.intent === 'otp') {
     const body_ = await rispostaFissa('otp');

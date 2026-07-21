@@ -33,7 +33,7 @@ export default async function handler(request) {
         const id = S(body.id, 40) || slug(body.titolo);
         const [row] = await sql`
           INSERT INTO procedura (id, titolo, keywords, tipo, risposta, url, attiva, sort_order)
-          VALUES (${id}, ${S(body.titolo, 200)}, ${S(body.keywords, 500)}, ${body.tipoRisposta === 'link' ? 'link' : 'text'},
+          VALUES (${id}, ${S(body.titolo, 200)}, ${S(body.keywords, 500)}, ${['link','supporto'].includes(body.tipoRisposta) ? body.tipoRisposta : 'text'},
                   ${S(body.risposta)}, ${S(body.url, 500)}, TRUE,
                   COALESCE((SELECT MAX(sort_order) + 1 FROM procedura), 0))
           RETURNING id`;
@@ -59,7 +59,7 @@ export default async function handler(request) {
         await sql`
           UPDATE procedura SET
             titolo = ${S(body.titolo, 200)}, keywords = ${S(body.keywords, 500)},
-            tipo = ${body.tipoRisposta === 'link' ? 'link' : 'text'},
+            tipo = ${['link','supporto'].includes(body.tipoRisposta) ? body.tipoRisposta : 'text'},
             risposta = ${S(body.risposta)}, url = ${S(body.url, 500)},
             attiva = ${body.attiva !== false}, updated_at = NOW()
           WHERE id = ${S(body.id, 40)}`;
