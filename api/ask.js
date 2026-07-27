@@ -1,7 +1,7 @@
 import { json } from '../lib/auth.js';
 import { sql, codiceTicket } from '../lib/db.js';
 import { interpret } from '../lib/gemini.js';
-import { getProcedure, getProceduraById, filtraOfferte, matchProcedura, rispostaFissa } from '../lib/kb.js';
+import { getProcedure, getProceduraById, filtraOfferte, matchProcedura, matchProcedure, rispostaFissa } from '../lib/kb.js';
 import { cercaNegozio } from '../lib/negozi.js';
 
 export const config = { runtime: 'edge' };
@@ -45,25 +45,40 @@ export default async function handler(request) {
     return json({ ticketId: null, type: 'negozio-ambiguo', candidati: ricerca.candidati });
   }
   const codici = { trovato: ricerca.stato === 'trovato', nome: ricerca.nome, sisSub: ricerca.sisSub, agenzia: ricerca.agenzia };
-
-  // 1) Interpreta (Gemini, con fallback locale). Le procedure arrivano dal DB.
-  const procedure = await getProcedure();
-  let intp = null;
-  try { intp = await interpret(messaggio, procedure); } catch { /* fallback */ }
-  if (!intp || !intp.intent) intp = await localInterpret(messaggio);
-
-  // Le parole chiave impostate nel pannello Contenuti devono avere la meglio: l'AI
-  // non le vede (riceve solo titolo+id), quindi a volte manda al supporto una
-  // richiesta che invece ha una procedura dedicata. Se l'AI è finita su un intent
-  // "da supporto"/poco chiaro (o su "portale" senza procedura) ma il messaggio
-  // contiene una parola chiave, usiamo quella procedura.
-  const senzaProcedura = intp.intent === 'portale' && !intp.procedureId;
-  if (senzaProcedura || ['cliente', 'disservizio', 'unclear'].includes(intp.intent)) {
-    const kw = await matchProcedura(messaggio);
-    if (kw) intp = { intent: 'portale', procedureId: kw.id, offerFilter: null };
-  }
-
   const codiciOut = { nome: codici.nome || negozioInput, sisSub: codici.sisSub, agenzia: codici.agenzia, trovato: codici.trovato };
+
+  // 1) Interpreta la richiesta.
+  const forcedId = (body.proceduraId || '').toString().slice(0, 60);
+  let intp;
+  if (forcedId) {
+    // Il dealer ha già scelto l'argomento (disambiguazione): rispondi con quella procedura.
+    intp = { intent: 'portale', procedureId: forcedId, offerFilter: null };
+  } else {
+    // Gemini, con fallback locale. Le procedure arrivano dal DB.
+    const procedure = await getProcedure();
+    intp = null;
+    try { intp = await interpret(messaggio, procedure); } catch { /* fallback */ }
+    if (!intp || !intp.intent) intp = await localInterpret(messaggio);
+
+    // Le parole chiave impostate nel pannello Contenuti devono avere la meglio: l'AI
+    // non le vede (riceve solo titolo+id), quindi a volte manda al supporto una
+    // richiesta che invece ha una procedura dedicata. Se l'AI è finita su un intent
+    // "da supporto"/poco chiaro (o su "portale" senza procedura) e il messaggio
+    // contiene parole chiave: se combacia UNA procedura la uso; se ne combaciano
+    // PIÙ (es. "scipafi" + "subentro") chiedo al dealer quale argomento.
+    const senzaProcedura = intp.intent === 'portale' && !intp.procedureId;
+    if (senzaProcedura || ['cliente', 'disservizio', 'unclear'].includes(intp.intent)) {
+      const matches = await matchProcedure(messaggio);
+      if (matches.length === 1) {
+        intp = { intent: 'portale', procedureId: matches[0].id, offerFilter: null };
+      } else if (matches.length >= 2) {
+        return json({
+          ticketId: null, type: 'scegli-argomento', colore: 'giallo', codici: codiciOut,
+          candidati: matches.slice(0, 5).map(p => ({ id: p.id, label: p.label }))
+        });
+      }
+    }
+  }
   const colore = COLORE[intp.intent] || 'giallo';
   const categoria = CATEGORIA[intp.intent] || 'Da chiarire';
 

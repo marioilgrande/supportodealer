@@ -432,6 +432,13 @@
             <div class="clarify-chips" id="c-negozio-chips"></div>
           </div>
 
+          <!-- quale argomento? (il messaggio tocca più procedure) -->
+          <div id="c-argomento" class="clarify-block">
+            <span class="tag">Assistente</span>
+            <p class="clarify-q">La tua richiesta tocca più argomenti: su quale ti do una mano?</p>
+            <div class="clarify-chips" id="c-argomento-chips"></div>
+          </div>
+
           <!-- l'AI chiede: 3 percorsi -->
           <div id="c-clarify" class="clarify-block">
             <span class="tag">Assistente</span>
@@ -688,7 +695,7 @@
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-negozio','c-answer','c-bolletta','c-clarify','c-portale','c-support','c-acea','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-acea','c-final-simone']
+    ['c-greeting','c-negozio','c-argomento','c-answer','c-bolletta','c-clarify','c-portale','c-support','c-acea','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-acea','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -757,6 +764,20 @@
     document.getElementById('c-negozio').classList.add('show');
   }
 
+  // Il messaggio tocca più argomenti (es. "scipafi" + "subentro"): faccio scegliere,
+  // poi rispondo con la procedura scelta (senza tirare a indovinare).
+  function renderScelteArgomento(candidati, messaggio){
+    const box = document.getElementById('c-argomento-chips');
+    box.innerHTML = (candidati || []).map(c =>
+      `<button type="button" class="chip" data-id="${esc(c.id).replace(/"/g, '&quot;')}">${esc(c.label)}</button>`
+    ).join('');
+    box.querySelectorAll('.chip').forEach(b => {
+      b.addEventListener('click', () => inviaRichiesta(messaggio, b.dataset.id));
+    });
+    showGreeting('Un attimo: su cosa ti serve di preciso? 👇');
+    document.getElementById('c-argomento').classList.add('show');
+  }
+
   function renderSupport(reason){
     currentSupportReason = reason || 'cliente';
     document.getElementById('c-support-msg').textContent = SUPPORT_MSG[reason] || SUPPORT_MSG.cliente;
@@ -771,12 +792,13 @@
   }
 
   // ------- Invio richiesta -------
-  async function inviaRichiesta(messaggio){
+  // `proceduraId` opzionale: forza una procedura specifica (usato dopo la scelta dell'argomento).
+  async function inviaRichiesta(messaggio, proceduraId){
     hidePanels();
     const btn = document.getElementById('f-submit');
     btn.disabled = true; const old = btn.textContent; btn.textContent = 'Sto pensando…';
     let r;
-    try { r = await apiPost('/api/ask', { negozio: negozioEl(), messaggio }); }
+    try { r = await apiPost('/api/ask', { negozio: negozioEl(), messaggio, proceduraId: proceduraId || undefined }); }
     catch { r = { error: 'rete' }; }
     btn.disabled = false; btn.textContent = old;
 
@@ -788,6 +810,8 @@
     currentCodici = r.codici || currentCodici;
     // Nome negozio ambiguo: chiedo quale, poi rimando la stessa domanda
     if (r.type === 'negozio-ambiguo'){ renderScelteNegozio(r.candidati, messaggio); return; }
+    // Più argomenti possibili: faccio scegliere, poi rispondo con la procedura scelta
+    if (r.type === 'scegli-argomento'){ renderScelteArgomento(r.candidati, messaggio); return; }
     if (r.type === 'answer') renderAnswer(r.answer);
     else if (r.type === 'offers') renderOffers(r.offers);
     else if (r.type === 'support') renderSupport(r.supportReason);
