@@ -52,6 +52,17 @@ export default async function handler(request) {
   try { intp = await interpret(messaggio, procedure); } catch { /* fallback */ }
   if (!intp || !intp.intent) intp = await localInterpret(messaggio);
 
+  // Le parole chiave impostate nel pannello Contenuti devono avere la meglio: l'AI
+  // non le vede (riceve solo titolo+id), quindi a volte manda al supporto una
+  // richiesta che invece ha una procedura dedicata. Se l'AI è finita su un intent
+  // "da supporto"/poco chiaro (o su "portale" senza procedura) ma il messaggio
+  // contiene una parola chiave, usiamo quella procedura.
+  const senzaProcedura = intp.intent === 'portale' && !intp.procedureId;
+  if (senzaProcedura || ['cliente', 'disservizio', 'unclear'].includes(intp.intent)) {
+    const kw = await matchProcedura(messaggio);
+    if (kw) intp = { intent: 'portale', procedureId: kw.id, offerFilter: null };
+  }
+
   const codiciOut = { nome: codici.nome || negozioInput, sisSub: codici.sisSub, agenzia: codici.agenzia, trovato: codici.trovato };
   const colore = COLORE[intp.intent] || 'giallo';
   const categoria = CATEGORIA[intp.intent] || 'Da chiarire';
