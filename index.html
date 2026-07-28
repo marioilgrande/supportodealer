@@ -1332,19 +1332,34 @@
     }
   });
 
-  document.getElementById('add-procedura').addEventListener('click', async () => {
-    const titolo = prompt('Titolo della nuova procedura:');
-    if (!titolo) return;
-    const r = await apiContenuti('POST', { tipo: 'procedura', titolo, tipoRisposta: 'text', risposta: '', keywords: '' });
-    if (r && r.error) alert('Errore: ' + r.error);
-    loadContenuti();
+  // Apre la voce appena creata e mette il cursore sul primo campo, pronta da compilare.
+  function apriVoce(id){
+    if (id == null) return;
+    const sel = (window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id);
+    const box = document.querySelector('.cont-body[data-id="' + sel + '"]');
+    if (!box) return;
+    const det = box.closest('details'); if (det){ det.open = true; det.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    const inp = box.querySelector('input[data-f="titolo"], input[data-f="nome"]');
+    if (inp){ inp.focus(); inp.select(); }
+  }
+
+  // Aggiunta SENZA prompt() del browser (che dopo alcuni usi viene bloccato):
+  // creo la voce con un titolo provvisorio e la apro subito per la modifica.
+  document.getElementById('add-procedura').addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    const r = await apiContenuti('POST', { tipo: 'procedura', id: 'proc-' + Date.now(), titolo: 'Nuova procedura', tipoRisposta: 'text', risposta: '', keywords: '' });
+    btn.disabled = false;
+    if (r && r.error){ alert('Errore: ' + r.error); return; }
+    await loadContenuti();
+    apriVoce(r.id);
   });
-  document.getElementById('add-offerta').addEventListener('click', async () => {
-    const nome = prompt('Nome della nuova offerta:');
-    if (!nome) return;
-    const r = await apiContenuti('POST', { tipo: 'offerta', nome, tipoOfferta: 'Variabile' });
-    if (r && r.error) alert('Errore: ' + r.error);
-    loadContenuti();
+  document.getElementById('add-offerta').addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    const r = await apiContenuti('POST', { tipo: 'offerta', nome: 'Nuova offerta', tipoOfferta: 'Variabile' });
+    btn.disabled = false;
+    if (r && r.error){ alert('Errore: ' + r.error); return; }
+    await loadContenuti();
+    apriVoce(r.id);
   });
 </script>
 
