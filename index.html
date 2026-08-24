@@ -1139,9 +1139,28 @@
     intervento_simone: ['Intervento Simone','simone']
   };
   async function loadDashboard(){
-    let data;
-    try { data = await (await fetch('/api/tickets')).json(); } catch { return; }
-    if (!data || data.error){ return; }
+    const board = document.getElementById('board');
+    let res, data;
+    // Se qualcosa va storto NON restare in silenzio: prima la pagina sembrava
+    // vuota ("lo storico e' sparito") senza dire perche'.
+    try { res = await fetch('/api/tickets'); data = await res.json(); }
+    catch {
+      board.innerHTML = '<p class="cont-empty">Non riesco a caricare le richieste: connessione non disponibile. Riprova tra poco.</p>';
+      return;
+    }
+    if (res && res.status === 401){
+      // Sessione scaduta: rimando al login invece di mostrare una pagina vuota.
+      document.getElementById('admin-content').classList.remove('show');
+      document.getElementById('admin-gate').style.display = '';
+      const errEl = document.getElementById('admin-error');
+      errEl.textContent = 'Sessione scaduta: rientra per rivedere le richieste.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!data || data.error){
+      board.innerHTML = '<p class="cont-empty">Non riesco a caricare le richieste: ' + esc((data && data.error) || 'errore sconosciuto') + '</p>';
+      return;
+    }
     const s = data.stats || {};
     document.getElementById('stat-rosse').textContent = s.rosse ?? 0;
     document.getElementById('stat-gialle').textContent = s.gialle ?? 0;
@@ -1151,7 +1170,6 @@
 
     const cols = { rosso: [], giallo: [], verde: [] };
     (data.tickets||[]).forEach(t => { (cols[t.colore] || cols.giallo).push(t); });
-    const board = document.getElementById('board');
     const colDef = [['rosso','Rosso — Urgente'],['giallo','Giallo — Media'],['verde','Verde — Non urgente']];
     board.innerHTML = colDef.map(([key,label]) => {
       const items = cols[key];
