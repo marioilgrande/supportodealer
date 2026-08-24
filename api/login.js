@@ -11,5 +11,8 @@ export default async function handler(request) {
   if (!user) return json({ error: 'Credenziali non valide' }, 401);
 
   const token = await createSessionToken(user);
-  return json({ ok: true, role: user.role }, 200, { 'Set-Cookie': setCookie(token) });
+  // Il token viaggia nel cookie (via normale). Lo restituiamo anche nel corpo:
+  // la dashboard lo tiene da parte e lo usa come Authorization se il browser
+  // non conserva i cookie, cosi' l'accesso funziona comunque.
+  return json({ ok: true, role: user.role, token }, 200, { 'Set-Cookie': setCookie(token) });
 }

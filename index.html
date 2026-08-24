@@ -1122,8 +1122,19 @@
   });
 
   // ------- Login admin -------
+  // Token di riserva: se il browser non conserva i cookie, le chiamate admin
+  // viaggiano con Authorization: Bearer. Il cookie resta comunque la via normale.
+  const TOKEN_KEY = 'sd_token';
+  function getToken(){ try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } }
+  function setToken(t){ try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {} }
+  function authFetch(url, opts){
+    const o = Object.assign({}, opts || {});
+    const t = getToken();
+    if (t) o.headers = Object.assign({}, o.headers || {}, { 'Authorization': 'Bearer ' + t });
+    return fetch(url, o);
+  }
   async function checkAdmin(){
-    try { const r = await (await fetch('/api/session')).json(); if (r.authenticated) enterAdmin(); } catch {}
+    try { const r = await (await authFetch('/api/session')).json(); if (r.authenticated) enterAdmin(); } catch {}
   }
   let appenaLoggato = false;   // per distinguere "sessione scaduta" da "cookie non conservato"
   function enterAdmin(){
@@ -1144,6 +1155,7 @@
     if (btn){ btn.disabled = false; btn.textContent = testo; }
     if (r && r.ok){
       err.style.display = 'none';
+      setToken(r.token || '');
       appenaLoggato = true;
       enterAdmin();
       return;
@@ -1165,7 +1177,7 @@
     let res, data;
     // Se qualcosa va storto NON restare in silenzio: prima la pagina sembrava
     // vuota ("lo storico e' sparito") senza dire perche'.
-    try { res = await fetch('/api/tickets'); data = await res.json(); }
+    try { res = await authFetch('/api/tickets'); data = await res.json(); }
     catch {
       board.innerHTML = '<p class="cont-empty">Non riesco a caricare le richieste: connessione non disponibile. Riprova tra poco.</p>';
       return;
@@ -1208,9 +1220,9 @@
       b.addEventListener('click', async () => {
         if (b.dataset.del === '1'){
           if (!confirm('Eliminare definitivamente questa richiesta?')) return;
-          await fetch('/api/tickets?id=' + encodeURIComponent(b.dataset.id), { method:'DELETE' });
+          await authFetch('/api/tickets?id=' + encodeURIComponent(b.dataset.id), { method:'DELETE' });
         } else {
-          await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: Number(b.dataset.id), rispostaOk: b.dataset.ok === '1' }) });
+          await authFetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: Number(b.dataset.id), rispostaOk: b.dataset.ok === '1' }) });
         }
         loadDashboard();
       });
@@ -1255,7 +1267,7 @@
   async function apiContenuti(method, data){
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (data) opts.body = JSON.stringify(data);
-    const res = await fetch('/api/contenuti', opts);
+    const res = await authFetch('/api/contenuti', opts);
     return res.json();
   }
   function flash(btn, msg){
