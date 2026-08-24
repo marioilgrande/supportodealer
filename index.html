@@ -707,8 +707,18 @@
   }
 
   async function apiPost(url, data){
-    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-    return res.json();
+    // Non deve mai lanciare: se il server risponde male (404/500/HTML) restituisco
+    // comunque un oggetto con l'errore, altrimenti la pagina resta muta.
+    let res;
+    try {
+      res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    } catch {
+      return { error: 'Connessione non disponibile: controlla la rete e riprova.' };
+    }
+    let out = null;
+    try { out = await res.json(); } catch { out = null; }
+    if (out && typeof out === 'object'){ out.status = res.status; return out; }
+    return { status: res.status, error: 'Il server ha risposto con un errore (' + res.status + '). Riprova tra poco.' };
   }
   async function inviaFeedback(bastata){
     if (currentTicketId) { try { await apiPost('/api/feedback', { ticketId: currentTicketId, bastata }); } catch {} }
@@ -1115,6 +1125,7 @@
   async function checkAdmin(){
     try { const r = await (await fetch('/api/session')).json(); if (r.authenticated) enterAdmin(); } catch {}
   }
+  let appenaLoggato = false;   // per distinguere "sessione scaduta" da "cookie non conservato"
   function enterAdmin(){
     document.getElementById('admin-gate').style.display = 'none';
     document.getElementById('admin-content').classList.add('show');
@@ -1126,9 +1137,20 @@
     const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-pw').value;
     const err = document.getElementById('admin-error');
+    const btn = e.currentTarget.querySelector('button');
+    const testo = btn ? btn.textContent : '';
+    if (btn){ btn.disabled = true; btn.textContent = 'Accesso in corso...'; }
     const r = await apiPost('/api/login', { email, password });
-    if (r && r.ok){ err.style.display='none'; enterAdmin(); }
-    else { err.textContent = (r && r.error) || 'Credenziali non valide'; err.style.display='block'; }
+    if (btn){ btn.disabled = false; btn.textContent = testo; }
+    if (r && r.ok){
+      err.style.display = 'none';
+      appenaLoggato = true;
+      enterAdmin();
+      return;
+    }
+    // Qualunque cosa sia andata storta, dillo: prima l'errore poteva restare muto.
+    err.textContent = (r && r.error) ? r.error : 'Credenziali non valide';
+    err.style.display = 'block';
   });
 
   // ------- Dashboard -------
@@ -1153,7 +1175,10 @@
       document.getElementById('admin-content').classList.remove('show');
       document.getElementById('admin-gate').style.display = '';
       const errEl = document.getElementById('admin-error');
-      errEl.textContent = 'Sessione scaduta: rientra per rivedere le richieste.';
+      errEl.textContent = appenaLoggato
+        ? 'Accesso riuscito ma la sessione non viene conservata: abilita i cookie per questo sito (o disattiva la navigazione privata) e riprova.'
+        : 'Sessione scaduta: rientra per rivedere le richieste.';
+      appenaLoggato = false;
       errEl.style.display = 'block';
       return;
     }
