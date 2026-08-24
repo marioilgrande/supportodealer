@@ -90,7 +90,7 @@ export default async function handler(request) {
 
   if (proc) {
     if (proc.type === 'supporto') {
-      // Risposta "Supporto ACEA": numero Dealer Support + i codici SIS/SUB del negozio. Nessun rimando a Simone.
+      // Risposta "Supporto ACEA": numero Dealer Support + i codici SIS/SUB del negozio. Nessuna segnalazione a Mario.
       payload = { type: 'support-acea' };
       rispostaAi = `Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub || 'da verificare'}).`;
     } else if (proc.type === 'link') {

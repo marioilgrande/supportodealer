@@ -378,7 +378,7 @@
             <button type="button" class="help-btn" id="help-open">Come funziona?</button>
           </div>
           <h2>Ciao! <span class="wave">👋</span> Come posso aiutarti?</h2>
-          <p class="sub">Scrivimi di cosa hai bisogno con parole tue: cerco di darti subito la risposta giusta. Se serve, ti metto in contatto con il collega di backup.</p>
+          <p class="sub">Scrivimi di cosa hai bisogno con parole tue: cerco di darti subito la risposta giusta. Se serve, ti faccio inviare una segnalazione a Mario.</p>
 
           <label class="field">
             <span class="label-text">Il tuo negozio</span>
@@ -474,14 +474,14 @@
             <div class="redirect-phone mono">06 45698346</div>
             <div class="redirect-codes mono" id="c-support-codes">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
             <p class="clarify-q" style="margin-top:14px;">Hai chiamato il supporto e risolto?</p>
-            <p class="hint-tasti">Dopo la chiamata fammelo sapere con uno dei due tasti 👇 Se non hai risolto passo la richiesta a Simone; senza la tua risposta invece non parte nulla.</p>
+            <p class="hint-tasti">Dopo la chiamata fammelo sapere con uno dei due tasti 👇 Se non hai risolto passo la richiesta a Mario; senza la tua risposta invece non parte nulla.</p>
             <div class="feedback-btns">
               <button type="button" class="fb-yes" id="su-yes">Sì, ho risolto</button>
               <button type="button" class="fb-no" id="su-no">No, non ho risolto</button>
             </div>
           </div>
 
-          <!-- Risposta "Supporto ACEA": numero + SIS/SUB del negozio, senza rimando a Simone -->
+          <!-- Risposta "Supporto ACEA": numero + SIS/SUB del negozio, senza segnalazione a Mario -->
           <div id="c-acea" class="clarify-block">
             <span class="tag">Assistente</span>
             <p class="clarify-q" id="c-acea-msg">Per questo il riferimento giusto è il <b>Dealer Support</b>: chiamali e comunica questi codici per farti identificare.</p>
@@ -497,7 +497,7 @@
           <!-- di che tipo di aiuto hai bisogno? -->
           <div id="c-help-type" class="clarify-block">
             <span class="tag">Assistente</span>
-            <p class="clarify-q">Va bene, ci pensa Simone. Di cosa hai bisogno?</p>
+            <p class="clarify-q">Va bene, ci pensa Mario. Di cosa hai bisogno?</p>
             <div class="clarify-chips">
               <button type="button" class="chip" id="ht-pratica">Assistenza su una pratica</button>
               <button type="button" class="chip" id="ht-altro">Assistenza su altro</button>
@@ -516,9 +516,9 @@
             </div>
           </div>
 
-          <!-- escalation PRATICA: CF + opportunity per Simone -->
+          <!-- escalation PRATICA: CF + opportunity per Mario -->
           <div id="c-escalate" class="client-data-block">
-            <p class="client-data-note">Perfetto, pratica di <b id="c-escalate-tipo">—</b>. Lasciami i dati del cliente così Simone la controlla a portale:</p>
+            <p class="client-data-note">Perfetto, pratica di <b id="c-escalate-tipo">—</b>. Lasciami i dati del cliente così Mario la controlla a portale:</p>
             <label class="field">
               <span class="label-text">Codice fiscale cliente <em>obbligatorio</em></span>
               <input type="text" id="f-cf" placeholder="es. RSSMRA80A01H501U" />
@@ -532,7 +532,7 @@
               <input type="text" id="f-nome" placeholder="es. Luca Bianchi" />
             </label>
             <label class="field">
-              <span class="label-text">Come vuoi che Simone ti contatti?</span>
+              <span class="label-text">Come vuoi che Mario ti contatti?</span>
               <select id="f-contatto-tipo">
                 <option value="telefono">Telefono</option>
                 <option value="email">Email</option>
@@ -544,21 +544,21 @@
             </label>
             <label class="field">
               <span class="label-text">Vuoi aggiungere qualcosa?</span>
-              <textarea id="f-nota-controllo" placeholder="Descrivi cosa deve verificare Simone..."></textarea>
+              <textarea id="f-nota-controllo" placeholder="Descrivi cosa deve verificare Mario..."></textarea>
             </label>
             <span class="field-hint warn" id="escalate-hint" style="display:none;">Mi servono codice fiscale, numero opportunity, il tuo nome e un recapito, grazie.</span>
-            <button type="button" class="submit-btn" id="f-escalate-submit" style="margin-top:4px;">Invia a Simone</button>
+            <button type="button" class="submit-btn" id="f-escalate-submit" style="margin-top:4px;">Invia a Mario</button>
           </div>
 
           <!-- escalation ALTRO: richiesta di contatto -->
           <div id="c-escalate-altro" class="client-data-block">
-            <p class="client-data-note">Nessun problema. Lasciami i tuoi riferimenti e Simone ti contatta appena possibile:</p>
+            <p class="client-data-note">Nessun problema. Lasciami i tuoi riferimenti e Mario ti contatta appena possibile:</p>
             <label class="field">
               <span class="label-text">Il tuo nome <em>obbligatorio</em></span>
               <input type="text" id="f-nome-a" placeholder="es. Luca Bianchi" />
             </label>
             <label class="field">
-              <span class="label-text">Come vuoi che Simone ti contatti?</span>
+              <span class="label-text">Come vuoi che Mario ti contatti?</span>
               <select id="f-contatto-tipo-a">
                 <option value="telefono">Telefono</option>
                 <option value="email">Email</option>
@@ -573,7 +573,7 @@
               <textarea id="f-descrizione" placeholder="Descrivi brevemente la richiesta..."></textarea>
             </label>
             <span class="field-hint warn" id="altro-hint" style="display:none;">Mi servono il tuo nome e un recapito (telefono o email), grazie.</span>
-            <button type="button" class="submit-btn" id="f-altro-submit" style="margin-top:4px;">Invia richiesta a Simone</button>
+            <button type="button" class="submit-btn" id="f-altro-submit" style="margin-top:4px;">Invia richiesta a Mario</button>
           </div>
 
           <!-- ESITO A: risolto -->
@@ -582,16 +582,16 @@
             <p style="margin:0;">Perfetto, sono contento di esserti stato utile! 🙂 Se ti serve altro, scrivimi pure quando vuoi.</p>
           </div>
 
-          <!-- ESITO Supporto ACEA: non risolto (nessun rimando a Simone) -->
+          <!-- ESITO Supporto ACEA: non risolto (nessuna segnalazione a Mario) -->
           <div id="c-final-acea" class="outcome-block outcome-ok">
             <span class="tag">Dealer Support</span>
             <p style="margin:0;">Per questo tipo di richiesta il canale corretto è il <b>Dealer Support</b> (<b>06 45698346</b>): riprova a contattarli con i tuoi codici SIS/SUB. Se ti serve altro, scrivimi pure. 🙂</p>
           </div>
 
-          <!-- ESITO B: inoltrata a Simone -->
+          <!-- ESITO B: inoltrata a Mario -->
           <div id="c-final-simone" class="outcome-block outcome-simone">
-            <span class="tag">Inoltrata a Simone</span>
-            <p style="margin:0 0 10px;">Fatto! Ho girato la richiesta al collega <b>Simone</b> via email: la verifica e ti ricontatta a breve. Grazie per la pazienza. 🙏</p>
+            <span class="tag">Inoltrata a Mario</span>
+            <p style="margin:0 0 10px;">Fatto! Ho girato la richiesta a <b>Mario</b> via email: la verifica e ti ricontatta a breve. Grazie per la pazienza. 🙏</p>
             <p style="margin:0 0 4px; font-size:0.82rem; color:var(--ink-soft);">Se ti serve subito, puoi anche chiamare il Dealer Support:</p>
             <div class="redirect-phone mono">06 45698346</div>
             <div class="redirect-codes mono" id="c-sis-sub">Negozio: &mdash; / SIS-SUB: &mdash; / Agenzia: &mdash;</div>
@@ -655,7 +655,7 @@
     <div class="board" id="board"></div>
 
     <div class="note-banner">
-      <b>Come leggere gli stati:</b> <span class="status-pill done">Risposta AI — bastata</span> il dealer ha confermato che la risposta automatica è stata sufficiente · <span class="status-pill wait">In attesa feedback</span> il dealer non ha ancora risposto · <span class="status-pill simone">Intervento Simone</span> il dealer ha insistito e la pratica è stata inoltrata via email al collega (CF + opportunity). I bottoni ✓/✕ ti servono per validare la qualità della risposta automatica.
+      <b>Come leggere gli stati:</b> <span class="status-pill done">Risposta AI — bastata</span> il dealer ha confermato che la risposta automatica è stata sufficiente · <span class="status-pill wait">In attesa feedback</span> il dealer non ha ancora risposto · <span class="status-pill simone">Intervento Mario</span> il dealer ha insistito e la pratica è stata inoltrata via email a Mario (CF + opportunity). I bottoni ✓/✕ ti servono per validare la qualità della risposta automatica.
     </div>
     </div><!-- /#panel-richieste -->
 
@@ -784,7 +784,7 @@
     document.getElementById('c-support-codes').textContent = codiciTxt(currentCodici);
     document.getElementById('c-support').classList.add('show');
   }
-  // Risposta "Supporto ACEA": numero + SIS/SUB del negozio. Nessun rimando a Simone.
+  // Risposta "Supporto ACEA": numero + SIS/SUB del negozio. Nessuna segnalazione a Mario.
   function renderAceaSupport(){
     document.getElementById('c-acea-codes').textContent = codiciTxt(currentCodici);
     showGreeting('Ci penso io a indirizzarti 👇');
@@ -947,7 +947,7 @@
     await inviaFeedback(false); hidePanels(); renderSupport('notresolved');
   });
 
-  // Feedback risposta "Supporto ACEA": in nessun caso si passa a Simone.
+  // Feedback risposta "Supporto ACEA": in nessun caso si crea una segnalazione a Mario.
   document.getElementById('acea-yes').addEventListener('click', async () => {
     await inviaFeedback(true); hidePanels(); document.getElementById('c-final-ok').classList.add('show');
   });
@@ -981,7 +981,7 @@
   });
   document.getElementById('ht-altro').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate-altro').classList.add('show'); });
 
-  function mostraSimone(codici){
+  function mostraSegnalazione(codici){
     document.getElementById('c-sis-sub').textContent = codiciTxt(codici || currentCodici);
     hidePanels(); document.getElementById('c-final-simone').classList.add('show');
   }
@@ -1013,7 +1013,7 @@
     const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'pratica', tipoPratica: currentTipoPratica,
       cf, opportunity: opp, nome, contattoTipo, contatto, nota: document.getElementById('f-nota-controllo').value });
     btn.disabled = false; btn.textContent = t;
-    if (r && r.ok) mostraSimone(r);
+    if (r && r.ok) mostraSegnalazione(r);
     else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
   });
 
@@ -1029,7 +1029,7 @@
     const r = await apiPost('/api/escalate', { ticketId: currentTicketId, kind: 'altro', nome, contattoTipo, contatto,
       nota: document.getElementById('f-descrizione').value });
     btn.disabled = false; btn.textContent = t;
-    if (r && r.ok) mostraSimone(r);
+    if (r && r.ok) mostraSegnalazione(r);
     else { hint.textContent = (r && r.error) || 'Errore invio, riprova.'; hint.style.display = 'block'; }
   });
 
@@ -1057,7 +1057,7 @@
     },
     {
       titolo: 'Ho già la risposta al 90% di quello che ti serve',
-      testo: 'Nella maggior parte dei casi ti rispondo <b>subito</b>: procedure del portale passo-passo, <b>offerte</b> (prezzi, scadenze, commercializzazione), verifica pratiche, OTP, disservizi. Il restante 10% — dove serve mettere mano — lo chiude il <b>collega di backup</b>: così arrivi al <b>100%</b>.',
+      testo: 'Nella maggior parte dei casi ti rispondo <b>subito</b>: procedure del portale passo-passo, <b>offerte</b> (prezzi, scadenze, commercializzazione), verifica pratiche, OTP, disservizi. Il restante 10% — dove serve mettere mano — lo chiude <b>Mario</b>: così arrivi al <b>100%</b>.',
       illu: 'Risposte pronte a qualsiasi ora. Se non capisco cosa ti serve, non tiro a indovinare: ti faccio una domanda per capire meglio.'
     },
     {
@@ -1076,9 +1076,9 @@
       illu: 'Dealer Support · <b>06 45698346</b><br>Ti mostro i codici del tuo negozio da dettare al telefono.'
     },
     {
-      titolo: 'Se serve, interviene il collega di backup',
-      testo: 'Se nemmeno il supporto ha risolto, ti chiedo il <b>tipo di pratica</b>, i <b>dati del cliente</b> (codice fiscale e opportunity) e i <b>tuoi riferimenti</b>. La richiesta va a <b>Simone</b>, che ti ricontatta. È così che arriviamo al 100%.',
-      illu: 'Lasci nome e un recapito (telefono o email): Simone sa già cosa controllare e come raggiungerti.'
+      titolo: 'Se serve, la segnalazione arriva a Mario',
+      testo: 'Se nemmeno il supporto ha risolto, ti chiedo il <b>tipo di pratica</b>, i <b>dati del cliente</b> (codice fiscale e opportunity) e i <b>tuoi riferimenti</b>. La segnalazione va a <b>Mario</b>, che ti ricontatta. È così che arriviamo al 100%.',
+      illu: 'Lasci nome e un recapito (telefono o email): Mario sa già cosa controllare e come raggiungerti.'
     }
   ];
   let tourI = 0;
@@ -1136,7 +1136,7 @@
     in_attesa: ['In attesa feedback','wait'],
     bastata: ['Risposta AI — bastata','done'],
     non_bastata: ['Risposta AI — non bastata','no'],
-    intervento_simone: ['Intervento Simone','simone']
+    intervento_simone: ['Intervento Mario','simone']
   };
   async function loadDashboard(){
     const board = document.getElementById('board');

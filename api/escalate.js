@@ -1,6 +1,6 @@
 import { json } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
-import { notificaSimone, notificaAdminEscalation } from '../lib/email.js';
+import { notificaMario } from '../lib/email.js';
 
 export const config = { runtime: 'edge' };
 
@@ -13,7 +13,7 @@ export default async function handler(request) {
   const kind = body.kind === 'altro' ? 'altro' : 'pratica';
   if (!id) return json({ error: 'ticketId mancante' }, 400);
 
-  // Chi fa la richiesta: nome + un recapito (telefono o email), così Simone lo ricontatta.
+  // Chi fa la richiesta: nome + un recapito (telefono o email), così Mario lo ricontatta.
   const nome = (body.nome || '').toString().slice(0, 120).trim();
   const contattoVal = (body.contatto || '').toString().slice(0, 120).trim();
   const contatto = contattoVal
@@ -51,8 +51,7 @@ export default async function handler(request) {
   }
   if (!ticket) return json({ error: 'Ticket non trovato' }, 404);
 
-  try { await notificaSimone(ticket); } catch {}
-  try { await notificaAdminEscalation(ticket); } catch {}
+  try { await notificaMario(ticket); } catch {}
 
   return json({ ok: true, sisSub: ticket.sis_sub, agenzia: ticket.agenzia, nome: ticket.negozio });
 }
