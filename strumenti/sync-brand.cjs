@@ -133,7 +133,7 @@ for (const [brand, info] of Object.entries(BRANDS)) {
   /* portali e strumenti del brand */
   if ((d.STRUMENTI || []).length) {
     voce(brand, 'portali', 'Portali e strumenti ' + info.nome,
-      (d.STRUMENTI).map(s => ({ tipo: 'link', titolo: s.titolo, testo: s.testo || '', href: s.url || s.href || '' })),
+      (d.STRUMENTI).map(s => ({ tipo: 'link', titolo: s.titolo, testo: s.testo || '', href: s.link || s.url || s.href || ((s.links || [])[0] || {}).href || '' })),
       { etichetta: 'Accessi', keywords: parole('portale accesso link strumenti comparatore inserimento', (d.STRUMENTI).map(s => s.titolo).join(' ')) });
     console.log('  portali/strumenti: ' + d.STRUMENTI.length);
   }

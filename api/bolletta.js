@@ -8,13 +8,11 @@ export const config = { runtime: 'edge' };
 // Il comparatore ACEA (fonte unica delle formule/indici). Il portale NON calcola
 // nulla: legge i dati dalla bolletta e apre QUESTO comparatore già compilato.
 // Un comparatore per brand (ACEA non esiste piu').
-// NOTA: la precompilazione via #b= e' gia' attiva solo sul comparatore ACEA
-// dismesso; su questi tre va aggiunto lo stesso bootstrap. Finche' non c'e',
-// il link apre il comparatore giusto e i dati letti restano nel riepilogo.
+// Tutti e tre accettano la precompilazione via #b= (stesso formato).
 const COMPARATORI = {
   plenitude: 'https://comparatoreplenitude.vercel.app/',
   sorgenia:  'https://comparatoresorgenia.vercel.app/',
-  alperia:   'https://multienergia.vercel.app/'
+  alperia:   'https://alperiae2k.vercel.app/'
 };
 
 // base64 url-safe del payload da mettere nell'hash del comparatore.
