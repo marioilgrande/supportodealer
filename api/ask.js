@@ -1,98 +1,85 @@
 import { json } from '../lib/auth.js';
 import { sql, codiceTicket } from '../lib/db.js';
 import { interpret } from '../lib/gemini.js';
-import { getProcedure, getProceduraById, filtraOfferte, matchProcedura, matchProcedure, rispostaFissa } from '../lib/kb.js';
-import { cercaNegozio } from '../lib/negozi.js';
+import {
+  BRANDS, isBrand, getProcedure, getProceduraById, getContatti,
+  filtraOfferte, matchProcedure, rispostaFissa
+} from '../lib/kb.js';
 
 export const config = { runtime: 'edge' };
 
-const DEALER_SUPPORT = '06 45698346';
-
-// Fallback locale se Gemini non è disponibile: parole-chiave.
-async function localInterpret(msg) {
+// Fallback locale se Gemini non e' disponibile: parole-chiave.
+async function localInterpret(msg, brand) {
   const t = (msg || '').toLowerCase();
-  if (/disservizio|portale.*(non funziona|bloccat|down|ko|giù|non va|in errore)|non funziona.*portale|errore 500|non riesco ad accedere|non riesco a caricare/.test(t))
-    return { intent: 'disservizio', procedureId: null, offerFilter: null };
   if (/avanzament|non firmati|non firmato|lun.?mer.?ven/.test(t))
     return { intent: 'avanzamento', procedureId: null, offerFilter: null };
-  if (/otp/.test(t) && /non arriv|non ricev|non gli arriv|non mi arriv|manca|aspett|non funziona/.test(t))
-    return { intent: 'otp', procedureId: null, offerFilter: null };
-  const proc = await matchProcedura(msg);
-  if (proc) return { intent: 'portale', procedureId: proc.id, offerFilter: null };
-  if (/offert|promo|sprint|flex|fix|scadenz|prezz|spread|commercializ|tariff/.test(t))
+  if (/chi (devo )?(contatt|chiam|scriv)|a chi mi rivolgo|numero|telefono|email|mail|contatt|assistenza|help desk|supporto/.test(t))
+    return { intent: 'contatti', procedureId: null, offerFilter: null };
+  if (/offert|promo|prezz|spread|scadenz|commercializ|tariff|fee|listino/.test(t))
     return { intent: 'offerte', procedureId: null, offerFilter: t };
-  if (/cliente|pratica|verific|opportun|a che punto|errore|switch|attivazione|non risulta/.test(t))
-    return { intent: 'cliente', procedureId: null, offerFilter: null };
   return { intent: 'unclear', procedureId: null, offerFilter: null };
 }
 
-const COLORE = { portale: 'giallo', cliente: 'rosso', offerte: 'verde', disservizio: 'rosso', avanzamento: 'verde', otp: 'giallo', unclear: 'giallo' };
-const CATEGORIA = { portale: 'Assistenza portale', cliente: 'Assistenza cliente', offerte: 'Info offerte', disservizio: 'Disservizio portale', avanzamento: 'Richiesta avanzamento', otp: 'OTP non arriva', unclear: 'Da chiarire' };
+const COLORE    = { portale: 'giallo', contatti: 'rosso', offerte: 'verde', avanzamento: 'verde', unclear: 'giallo' };
+const CATEGORIA = { portale: 'Procedura', contatti: 'Chi contattare', offerte: 'Info offerte', avanzamento: 'Richiesta avanzamento', unclear: 'Da chiarire' };
 
 export default async function handler(request) {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
 
-  const negozioInput = (body.negozio || '').toString().slice(0, 200);
+  const brand = isBrand(body.brand) ? body.brand : '';
+  if (!brand) return json({ error: 'Scegli prima il brand', type: 'serve-brand', brands: BRANDS }, 400);
+
+  const negozio   = (body.negozio || '').toString().slice(0, 200).trim();
   const messaggio = (body.messaggio || '').toString().slice(0, 2000);
   if (!messaggio.trim()) return json({ error: 'Messaggio vuoto' }, 400);
 
-  // 0) Il negozio: se il nome scritto somiglia a piu' negozi (es. "andrea"), non
-  //    tiriamo a indovinare: chiediamo quale, prima di fare qualsiasi altra cosa.
-  const ricerca = await cercaNegozio(negozioInput);
-  if (ricerca.stato === 'ambiguo') {
-    return json({ ticketId: null, type: 'negozio-ambiguo', candidati: ricerca.candidati });
-  }
-  const codici = { trovato: ricerca.stato === 'trovato', nome: ricerca.nome, sisSub: ricerca.sisSub, agenzia: ricerca.agenzia };
-  const codiciOut = { nome: codici.nome || negozioInput, sisSub: codici.sisSub, agenzia: codici.agenzia, trovato: codici.trovato };
+  const nomeBrand = (BRANDS.find(b => b.id === brand) || {}).nome || brand;
 
-  // 1) Interpreta la richiesta.
-  const forcedId = (body.proceduraId || '').toString().slice(0, 60);
+  // 1) Interpreta la richiesta (sempre dentro il brand scelto).
+  const forcedId = (body.proceduraId || '').toString().slice(0, 80);
   let intp;
   if (forcedId) {
-    // Il dealer ha già scelto l'argomento (disambiguazione): rispondi con quella procedura.
     intp = { intent: 'portale', procedureId: forcedId, offerFilter: null };
   } else {
-    // Gemini, con fallback locale. Le procedure arrivano dal DB.
-    const procedure = await getProcedure();
+    const procedure = await getProcedure(brand);
     intp = null;
-    try { intp = await interpret(messaggio, procedure); } catch { /* fallback */ }
-    if (!intp || !intp.intent) intp = await localInterpret(messaggio);
+    try { intp = await interpret(messaggio, procedure, nomeBrand); } catch { /* fallback */ }
+    if (!intp || !intp.intent) intp = await localInterpret(messaggio, brand);
 
-    // Le parole chiave impostate nel pannello Contenuti devono avere la meglio: l'AI
-    // non le vede (riceve solo titolo+id), quindi a volte manda al supporto una
-    // richiesta che invece ha una procedura dedicata. Se l'AI è finita su un intent
-    // "da supporto"/poco chiaro (o su "portale" senza procedura) e il messaggio
-    // contiene parole chiave: se combacia UNA procedura la uso; se ne combaciano
-    // PIÙ (es. "scipafi" + "subentro") chiedo al dealer quale argomento.
+    // Le parole chiave hanno la meglio: l'AI non le vede (riceve solo titolo+id).
+    // Una sola procedura -> rispondo con quella; piu' di una -> chiedo quale.
     const senzaProcedura = intp.intent === 'portale' && !intp.procedureId;
-    if (senzaProcedura || ['cliente', 'disservizio', 'unclear'].includes(intp.intent)) {
-      const matches = await matchProcedure(messaggio);
+    if (senzaProcedura || ['contatti', 'unclear'].includes(intp.intent)) {
+      const matches = await matchProcedure(messaggio, brand);
       if (matches.length === 1) {
         intp = { intent: 'portale', procedureId: matches[0].id, offerFilter: null };
       } else if (matches.length >= 2) {
         return json({
-          ticketId: null, type: 'scegli-argomento', colore: 'giallo', codici: codiciOut,
+          ticketId: null, type: 'scegli-argomento', brand, colore: 'giallo',
           candidati: matches.slice(0, 5).map(p => ({ id: p.id, label: p.label }))
         });
       }
     }
   }
-  const colore = COLORE[intp.intent] || 'giallo';
+
+  const colore    = COLORE[intp.intent] || 'giallo';
   const categoria = CATEGORIA[intp.intent] || 'Da chiarire';
 
-  // 2) Costruisci la risposta dai dati vetted (mai testo generato dall'AI)
+  // 2) Risposta costruita sui dati verificati (mai testo generato dall'AI)
   let payload = { type: 'clarify' };
   let rispostaAi = '';
 
   const proc = intp.intent === 'portale' && intp.procedureId ? await getProceduraById(intp.procedureId) : null;
 
   if (proc) {
-    if (proc.type === 'supporto') {
-      // Risposta "Supporto ACEA": numero Dealer Support + i codici SIS/SUB del negozio. Nessuna segnalazione a Mario.
-      payload = { type: 'support-acea' };
-      rispostaAi = `Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub || 'da verificare'}).`;
+    if (proc.type === 'blocchi') {
+      payload = { type: 'scheda', scheda: { titolo: proc.label, sottotitolo: proc.sottotitolo, etichetta: proc.etichetta, blocchi: proc.blocchi } };
+      rispostaAi = proc.label;
+    } else if (proc.type === 'contatti' || proc.type === 'supporto') {
+      payload = { type: 'contatti', contatti: await getContatti(brand) };
+      rispostaAi = 'Contatti ' + nomeBrand;
     } else if (proc.type === 'link') {
       payload = { type: 'answer', answer: { kind: 'link', tag: 'Guida passo-passo', body: 'Ho la guida completa per questa procedura:', url: proc.url } };
       rispostaAi = 'Guida: ' + proc.url;
@@ -100,38 +87,29 @@ export default async function handler(request) {
       payload = { type: 'answer', answer: { kind: 'text', tag: 'Ecco come fare', body: proc.answer } };
       rispostaAi = proc.answer;
     }
-  } else if (intp.intent === 'otp') {
-    const body_ = await rispostaFissa('otp');
-    payload = { type: 'answer', answer: { kind: 'text', tag: 'OTP non arriva', body: body_ } };
-    rispostaAi = body_;
   } else if (intp.intent === 'offerte') {
-    const offers = await filtraOfferte(intp.offerFilter || messaggio);
+    const offers = await filtraOfferte(intp.offerFilter || messaggio, brand);
     payload = { type: 'offers', offers };
-    rispostaAi = offers.map(o => `${o.nome}: luce ${o.luce}; gas ${o.gas}; comm ${o.comm}; scad ${o.scadenza}`).join(' | ');
+    rispostaAi = offers.map(o => `${o.nome}: ${o.luce || o.gas || ''} comm ${o.comm}`).join(' | ').slice(0, 2000);
   } else if (intp.intent === 'avanzamento') {
-    const body_ = await rispostaFissa('avanzamento');
-    payload = { type: 'answer', answer: { kind: 'text', tag: 'Avanzamento pratiche', body: body_ } };
-    rispostaAi = body_;
-  } else if (intp.intent === 'disservizio') {
-    payload = { type: 'support', supportReason: 'disservizio' };
-    rispostaAi = `Disservizio portale → Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub}).`;
-  } else if (intp.intent === 'cliente') {
-    payload = { type: 'support', supportReason: 'cliente' };
-    rispostaAi = `Verifica cliente → Dealer Support ${DEALER_SUPPORT} (SIS-SUB ${codici.sisSub}).`;
+    const testo = await rispostaFissa('avanzamento');
+    payload = { type: 'answer', answer: { kind: 'text', tag: 'Avanzamento pratiche', body: testo } };
+    rispostaAi = testo;
+  } else if (intp.intent === 'contatti') {
+    payload = { type: 'contatti', contatti: await getContatti(brand) };
+    rispostaAi = 'Contatti ' + nomeBrand;
   } else {
-    // Richiesta ancora da chiarire: non creo un ticket finché non si capisce l'intento
-    return json({ ticketId: null, type: 'clarify', colore, codici: codiciOut });
+    // Non si capisce ancora: nessun ticket finche' non e' chiaro cosa serve.
+    return json({ ticketId: null, type: 'clarify', brand, colore });
   }
 
   // 3) Salva il ticket
   let id = 0, codice = '';
   try {
     const [row] = await sql`
-      INSERT INTO ticket (negozio, sis_sub, agenzia, categoria, colore, messaggio, risposta_ai, esito)
-      VALUES (${codici.nome || negozioInput}, ${codici.sisSub}, ${codici.agenzia},
-              ${categoria}, ${colore}, ${messaggio}, ${rispostaAi}, 'in_attesa')
-      RETURNING id
-    `;
+      INSERT INTO ticket (brand, negozio, sis_sub, agenzia, categoria, colore, messaggio, risposta_ai, esito)
+      VALUES (${brand}, ${negozio}, '', '', ${categoria}, ${colore}, ${messaggio}, ${rispostaAi}, 'in_attesa')
+      RETURNING id`;
     id = Number(row.id);
     codice = codiceTicket(id);
     await sql`UPDATE ticket SET codice = ${codice} WHERE id = ${id}`;
@@ -139,9 +117,5 @@ export default async function handler(request) {
     return json({ error: 'DB: ' + (err.message || 'errore') }, 500);
   }
 
-  // Nessuna email in questa fase: parte solo se il dealer dice di NON aver risolto
-  // (vedi api/escalate.js). Così Mario non riceve avvisi per richieste che si
-  // chiudono da sole con la risposta automatica o con la chiamata al supporto.
-
-  return json({ ticketId: id, codice, colore, codici: codiciOut, ...payload });
+  return json({ ticketId: id, codice, brand, colore, ...payload });
 }

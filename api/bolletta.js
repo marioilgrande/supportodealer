@@ -1,13 +1,21 @@
 import { json } from '../lib/auth.js';
 import { sql, codiceTicket } from '../lib/db.js';
 import { estraiBolletta } from '../lib/gemini.js';
-import { cercaNegozio } from '../lib/negozi.js';
+import { isBrand, BRANDS } from '../lib/kb.js';
 
 export const config = { runtime: 'edge' };
 
 // Il comparatore ACEA (fonte unica delle formule/indici). Il portale NON calcola
 // nulla: legge i dati dalla bolletta e apre QUESTO comparatore già compilato.
-const COMPARATORE_URL = 'https://comparatore2k.vercel.app/';
+// Un comparatore per brand (ACEA non esiste piu').
+// NOTA: la precompilazione via #b= e' gia' attiva solo sul comparatore ACEA
+// dismesso; su questi tre va aggiunto lo stesso bootstrap. Finche' non c'e',
+// il link apre il comparatore giusto e i dati letti restano nel riepilogo.
+const COMPARATORI = {
+  plenitude: 'https://comparatoreplenitude.vercel.app/',
+  sorgenia:  'https://comparatoresorgenia.vercel.app/',
+  alperia:   'https://multienergia.vercel.app/'
+};
 
 // base64 url-safe del payload da mettere nell'hash del comparatore.
 function encodePayload(obj) {
@@ -28,6 +36,8 @@ export default async function handler(request) {
   const pdf = (body.pdf || '').toString();
   const mime = (body.mime || 'application/pdf').toString();
   const negozioInput = (body.negozio || '').toString().slice(0, 200);
+  const brand = isBrand(body.brand) ? body.brand : '';
+  if (!brand) return json({ error: 'Scegli prima il brand', type: 'serve-brand' }, 400);
   const nota = (body.nota || '').toString().slice(0, 500);
 
   if (!pdf) return json({ error: 'Nessun file' }, 400);
@@ -70,7 +80,8 @@ export default async function handler(request) {
     quotaConsumiGas: g ? num(g.quotaConsumi) : '',
     quotaFissaGas: g ? num(g.quotaFissa) : ''
   };
-  const url = COMPARATORE_URL + '#b=' + encodePayload(payload);
+  const base = COMPARATORI[brand] || COMPARATORI.plenitude;
+  const url = base + '#b=' + encodePayload(payload);
 
   // 3) Riepilogo per mostrarlo nel portale prima di aprire il comparatore
   const riepilogo = {
@@ -88,15 +99,14 @@ export default async function handler(request) {
   // 4) Log ticket (best effort: se il DB non c'è, l'analisi funziona lo stesso)
   let ticketId = null, codice = '';
   try {
-    const ric = await cercaNegozio(negozioInput);
-    const nomeNeg = ric.stato === 'trovato' ? ric.nome : (negozioInput || '—');
+    const nomeNeg = negozioInput || '—';
     const parti = [];
     if (riepilogo.gas) parti.push(`gas ${riepilogo.gas.smc} Smc, attuale ${riepilogo.gas.costoAttuale.toFixed(2)} €`);
     if (riepilogo.luce) parti.push(`luce ${riepilogo.luce.kwh} kWh, attuale ${riepilogo.luce.costoAttuale.toFixed(2)} €`);
     const riassunto = `Analisi bolletta${riepilogo.fornitore ? ' (' + riepilogo.fornitore + ')' : ''} — ${parti.join('; ')} — periodo ${mesi.join(', ') || 'n/d'}`;
     const [row] = await sql`
-      INSERT INTO ticket (negozio, sis_sub, agenzia, categoria, colore, messaggio, risposta_ai, esito)
-      VALUES (${nomeNeg}, ${ric.sisSub || ''}, ${ric.agenzia || ''},
+      INSERT INTO ticket (brand, negozio, sis_sub, agenzia, categoria, colore, messaggio, risposta_ai, esito)
+      VALUES (${brand}, ${nomeNeg}, '', '',
               'Analisi bolletta', 'verde', ${nota || riassunto}, ${riassunto}, 'in_attesa')
       RETURNING id`;
     ticketId = Number(row.id);
