@@ -17,6 +17,47 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const BASE = path.resolve(__dirname, '../..');          // cartella "HTML MARIO"
 const USCITA = path.resolve(__dirname, '../import-brand.sql');
 
+/* Materiali formativi allegati al portale (file in assets/corsi/).
+   Non vivono nei portali info-utili: li teniamo qui, dichiarati a mano. */
+const ALLEGATI = {
+  plenitude: [{
+    id: 'formazione-corsi',
+    titolo: 'Corsi obbligatori di formazione (APPRENDI)',
+    sottotitolo: 'I materiali dei corsi obbligatori Eni Plenitude, con le risposte dei quiz.',
+    etichetta: 'Formazione',
+    keywords: 'formazione, corso, corsi, apprendi, quiz, test, compliance, codice di condotta, quadro normativo, attestato, obbligatoria',
+    blocchi: [
+      { tipo: 'info', testo: 'Raccolta dei materiali dei <strong>corsi obbligatori</strong> della piattaforma APPRENDI, organizzati per corso con le schermate dei quiz.' },
+      { tipo: 'lista', titolo: 'Corsi inclusi', voci: [
+        'Privacy e protezione dei dati &mdash; 14 risposte',
+        'Quadro normativo per operatori e partner commerciali &mdash; 18 risposte',
+        'Codice di condotta &mdash; 4 risposte',
+        'Sicurezza e protezione dei dati &mdash; 6 risposte',
+        'Fibra ottica &mdash; 10 risposte'
+      ]},
+      { tipo: 'file', titolo: 'Scarica la raccolta dei corsi', testo: 'PDF, 27 pagine', href: 'assets/corsi/corsi-formazione-plenitude.pdf' }
+    ]
+  }],
+  sorgenia: [{
+    id: 'formazione-privacy',
+    titolo: 'Formazione Sorgenia: accesso e test',
+    sottotitolo: 'Come entrare nella Sorgenia Suite, seguire il percorso e completare i test.',
+    etichetta: 'Formazione',
+    keywords: 'formazione, corso, corsi, apprendi, appprendi, suite, quiz, test, compliance, store compliance, privacy, attestato, obbligatoria',
+    blocchi: [
+      { tipo: 'info', testo: 'Guida operativa E2K alla <strong>formazione obbligatoria Sorgenia</strong>: primo accesso alla Suite, percorso APPprendi e risposte ai test.' },
+      { tipo: 'passi', titolo: 'In breve', voci: [
+        'Ricevi la mail di iscrizione e usa il link per accedere alla Sorgenia Suite.',
+        'Al primo accesso imposta la password dal pulsante ricevuto via mail.',
+        'Dalla home apri <strong>APPprendi</strong> &rarr; Formazione &rarr; Catalogo lezioni.',
+        'Apri la card <strong>Store Compliance</strong> e completa il percorso.'
+      ]},
+      { tipo: 'file', titolo: 'Scarica il manuale della formazione', testo: 'PDF, 21 pagine', href: 'assets/corsi/formazione-privacy-sorgenia.pdf' }
+    ]
+  }],
+  alperia: []
+};
+
 const BRANDS = {
   plenitude: { dir: 'PLENITUDE INFO', nome: 'Plenitude' },
   sorgenia:  { dir: 'SORGENIA INFO',  nome: 'Sorgenia'  },
@@ -149,6 +190,12 @@ for (const [brand, info] of Object.entries(BRANDS)) {
       { etichetta: 'Moduli', keywords: parole('modulo moduli modulistica allegato allegati stampare firmare documento') });
     console.log('  modulistica: ' + d.MODULI.length + ' file');
   }
+
+  /* materiali formativi allegati (file serviti dal portale) */
+  for (const a of (ALLEGATI[brand] || [])) {
+    voce(brand, a.id, a.titolo, a.blocchi, { sottotitolo: a.sottotitolo, etichetta: a.etichetta, keywords: a.keywords });
+  }
+  if ((ALLEGATI[brand] || []).length) console.log('  materiali formativi: ' + ALLEGATI[brand].length);
 
   /* contatti pubblici (i riservati agli AM restano fuori) */
   let nc = 0;
