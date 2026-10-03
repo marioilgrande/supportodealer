@@ -1,5 +1,5 @@
 import { json } from '../lib/auth.js';
-import { getContatti, isBrand } from '../lib/kb.js';
+import { getContatti, getTipiPratica, isBrand } from '../lib/kb.js';
 
 export const config = { runtime: 'edge' };
 
@@ -12,5 +12,5 @@ export default async function handler(request) {
   try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
   const brand = isBrand(body.brand) ? body.brand : '';
   if (!brand) return json({ error: 'brand mancante' }, 400);
-  return json({ ok: true, brand, contatti: await getContatti(brand) });
+  return json({ ok: true, brand, contatti: await getContatti(brand), tipiPratica: await getTipiPratica(brand) });
 }

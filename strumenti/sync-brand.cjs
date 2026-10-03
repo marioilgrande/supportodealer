@@ -71,7 +71,7 @@ function parole(...testi) {
 }
 
 /* ---------- raccolta delle voci ------------------------------------------ */
-const voci = [], contatti = [], offerte = [];
+const voci = [], contatti = [], offerte = [], tipiPratica = [];
 let ord = 0;
 
 function voce(brand, id, titolo, blocchi, extra = {}) {
@@ -161,6 +161,41 @@ for (const [brand, info] of Object.entries(BRANDS)) {
   }
   if ((d.RUBRICA || []).length) console.log('  contatti: ' + nc + ' pubblici (' + ((d.RUBRICA).length - nc) + ' riservati esclusi)');
 
+  /* tipi di pratica ammessi: ogni brand dichiara le operazioni in un posto diverso.
+     Servono a non proporre al dealer cose che il suo brand non puo' lavorare. */
+  const tp = [];
+  if (brand === 'plenitude') {
+    // tabella "Operazioni ammesse": tengo solo le righe con almeno un si'
+    for (const p of (d.PROCEDURE || [])) for (const b of (p.blocchi || [])) {
+      if (b.tipo !== 'tabella' || !/operazion/i.test(b.titolo || '')) continue;
+      for (const r of (b.righe || [])) {
+        const okL = /\u2705/.test(r[1] || ''), okG = /\u2705/.test(r[2] || '');
+        if (!okL && !okG) continue;
+        tp.push({ nome: String(r[0] || '').replace(/\s*\(.*?\)\s*$/, '').trim(),
+                  nota: (okL && okG) ? '' : (okL ? 'solo luce' : 'solo gas') });
+      }
+    }
+  } else if (brand === 'sorgenia') {
+    // colonne della tabella del credit check residenziale
+    for (const p of (d.PROCEDURE || [])) for (const b of (p.blocchi || [])) {
+      if (b.tipo !== 'tabella' || !/credit check/i.test(b.titolo || '')) continue;
+      for (const c of (b.colonne || []).slice(1)) tp.push({ nome: String(c).trim(), nota: '' });
+    }
+  } else if (brand === 'alperia') {
+    // usi dichiarati dalle offerte + la voltura dalle schede operative
+    const set = new Set();
+    for (const o of (d.OFFERTE || [])) for (const u of (((o.usi || {}).si) || [])) set.add(String(u).trim());
+    if ((d.MODULI_INFO || {}).voltura) set.add('Voltura');
+    for (const n of set) tp.push({ nome: n, nota: '' });
+  }
+  let nt = 0;
+  for (const t of tp) {
+    if (!t.nome) continue;
+    tipiPratica.push({ id: brand + ':tp-' + t.nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40),
+                       brand, nome: t.nome, nota: t.nota, sort_order: nt++ });
+  }
+  console.log('  tipi di pratica: ' + nt + ' -> ' + tp.map(x => x.nome).join(', '));
+
   /* offerte: ogni brand ha campi diversi -> adattatore dedicato */
   const ad = {
     plenitude: (o) => ({ nome: [o.fam, o.variante].filter(Boolean).join(' '), tipo: o.tipo || '', scadenza: o.al || '',
@@ -219,11 +254,18 @@ for (const o of offerte) {
   L.push('  ' + lit(o.luce) + ', ' + lit(o.gas) + ', ' + lit(o.comm) + ', ' + lit(o.segmento) + ", 'sync', TRUE, " + o.sort_order + ');');
 }
 L.push('');
+L.push('-- 5) tipi di pratica ammessi per brand (' + tipiPratica.length + ')');
+L.push("DELETE FROM tipo_pratica WHERE origine = 'sync';");
+for (const t of tipiPratica) {
+  L.push('INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (');
+  L.push('  ' + lit(t.id) + ', ' + lit(t.brand) + ', ' + lit(t.nome) + ', ' + lit(t.nota) + ", 'sync', TRUE, " + t.sort_order + ');');
+}
+L.push('');
 L.push('COMMIT;');
 
 fs.writeFileSync(USCITA, L.join('\n') + '\n', 'utf8');
 const nonAscii = L.join('\n').match(/[^\x00-\x7F]/g);
 console.log('\n=============================================');
-console.log('voci: ' + voci.length + ' | contatti: ' + contatti.length + ' | offerte: ' + offerte.length);
+console.log('voci: ' + voci.length + ' | contatti: ' + contatti.length + ' | offerte: ' + offerte.length + ' | tipi pratica: ' + tipiPratica.length);
 console.log('scritto ' + path.basename(USCITA) + ' (' + (fs.statSync(USCITA).size / 1024).toFixed(0) + ' KB)');
 console.log('caratteri non-ASCII nello script: ' + (nonAscii ? nonAscii.length + ' (ATTENZIONE)' : '0 (ok)'));

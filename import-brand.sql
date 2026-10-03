@@ -372,4 +372,33 @@ INSERT INTO offerta (brand, nome, tipo, scadenza, durata, luce, gas, comm, segme
   'alperia', 'Gas Condoindex Latemar', 'variabile', '10/10/2026', '',
   '', 'PSV + 0,0500', '12,00', 'domestico', 'sync', TRUE, 39);
 
+-- 5) tipi di pratica ammessi per brand (13)
+DELETE FROM tipo_pratica WHERE origine = 'sync';
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'plenitude:tp-switch', 'plenitude', 'Switch', '', 'sync', TRUE, 0);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'plenitude:tp-switch-con-voltura', 'plenitude', 'Switch con voltura', 'solo luce', 'sync', TRUE, 1);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'sorgenia:tp-switch-semplice', 'sorgenia', 'Switch semplice', '', 'sync', TRUE, 0);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'sorgenia:tp-nuovo-allaccio', 'sorgenia', 'Nuovo allaccio', '', 'sync', TRUE, 1);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'sorgenia:tp-riattivazione-luce', 'sorgenia', 'Riattivazione luce', '', 'sync', TRUE, 2);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'sorgenia:tp-switch-con-voltura', 'sorgenia', 'Switch con voltura', '', 'sync', TRUE, 3);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-switch', 'alperia', 'Switch', '', 'sync', TRUE, 0);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-switch-titolo-iv', 'alperia', 'Switch Titolo IV', '', 'sync', TRUE, 1);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-subentro', 'alperia', 'Subentro', '', 'sync', TRUE, 2);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-nuova-attivazione', 'alperia', 'Nuova attivazione', '', 'sync', TRUE, 3);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-cambio-offerta', 'alperia', 'Cambio offerta', '', 'sync', TRUE, 4);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-contratti-mix', 'alperia', 'Contratti mix', '', 'sync', TRUE, 5);
+INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order) VALUES (
+  'alperia:tp-voltura', 'alperia', 'Voltura', '', 'sync', TRUE, 6);
+
 COMMIT;

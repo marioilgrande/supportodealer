@@ -537,12 +537,7 @@
           <div id="c-tipo-pratica" class="clarify-block">
             <span class="tag">Assistente</span>
             <p class="clarify-q">Di che tipo di pratica si tratta?</p>
-            <div class="clarify-chips">
-              <button type="button" class="chip" data-pratica="SUBENTRO">Subentro</button>
-              <button type="button" class="chip" data-pratica="SWITCH">Switch</button>
-              <button type="button" class="chip" data-pratica="SWITCH CON VOLTURA">Switch con voltura</button>
-              <button type="button" class="chip" data-pratica="VOLTURA INTERNA">Voltura interna</button>
-            </div>
+            <div class="clarify-chips" id="c-tipo-pratica-chips"></div>
           </div>
 
           <!-- escalation PRATICA: CF + opportunity per Mario -->
@@ -700,6 +695,10 @@
       <div class="cont-head"><h3>Contatti</h3><button class="btn-add" id="add-contatto">+ Aggiungi contatto</button></div>
       <div id="lista-contatti"></div>
 
+      <div class="cont-head"><h3>Tipi di pratica</h3><button class="btn-add" id="add-tipo-pratica">+ Aggiungi tipo</button></div>
+      <p class="contenuti-intro" style="margin-top:-6px;">Sono le operazioni che questo brand puo&rsquo; davvero lavorare: il dealer vedra&rsquo; solo queste quando chiede assistenza su una pratica.</p>
+      <div id="lista-tipi-pratica"></div>
+
       <div class="cont-head"><h3>Offerte</h3><button class="btn-add" id="add-offerta">+ Aggiungi offerta</button></div>
       <div id="lista-offerte"></div>
     </div>
@@ -727,6 +726,36 @@
   const BRAND_NOMI = { plenitude: 'Plenitude', sorgenia: 'Sorgenia', alperia: 'Alperia' };
   let currentSupportReason = null;
   let currentTipoPratica = null;
+  let brandInfo = null;          // { contatti, tipiPratica } del brand scelto
+  async function caricaBrandInfo(){
+    if (brandInfo && brandInfo.brand === currentBrand) return brandInfo;
+    let r = null;
+    try { r = await apiPost('/api/contatti-brand', { brand: currentBrand }); } catch {}
+    brandInfo = (r && r.ok) ? { brand: currentBrand, contatti: r.contatti || [], tipiPratica: r.tipiPratica || [] }
+                            : { brand: currentBrand, contatti: [], tipiPratica: [] };
+    return brandInfo;
+  }
+  // I tipi di pratica cambiano per brand: non proponiamo operazioni che non si possono fare.
+  function renderTipiPratica(lista){
+    const box = document.getElementById('c-tipo-pratica-chips');
+    if (!lista || !lista.length){
+      box.innerHTML = '<button type="button" class="chip" data-pratica="ALTRO">Non saprei / altro</button>';
+    } else {
+      box.innerHTML = lista.map(t => {
+        const nome = esc(t.nome);
+        const nota = t.nota ? ' <span style="opacity:.7;font-weight:400">(' + esc(t.nota) + ')</span>' : '';
+        return '<button type="button" class="chip" data-pratica="' + attr(t.nome) + '">' + nome + nota + '</button>';
+      }).join('');
+    }
+    box.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        currentTipoPratica = chip.dataset.pratica;
+        document.getElementById('c-escalate-tipo').textContent = currentTipoPratica;
+        hidePanels();
+        document.getElementById('c-escalate').classList.add('show');
+      });
+    });
+  }
   const negozioEl = () => document.getElementById('f-negozio').value.trim();
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
@@ -864,7 +893,7 @@
   // ---- Scelta del brand: primo passo, filtra tutte le risposte ----
   document.getElementById('brand-pick').addEventListener('click', (e) => {
     const b = e.target.closest('.brand-chip'); if (!b) return;
-    currentBrand = b.dataset.brand;
+    currentBrand = b.dataset.brand; brandInfo = null;
     document.querySelectorAll('#brand-pick .brand-chip').forEach(x => x.classList.toggle('on', x === b));
     document.getElementById('brand-hint').style.display = 'none';
   });
@@ -1003,24 +1032,19 @@
   });
   document.getElementById('fb-no').addEventListener('click', async () => {
     await inviaFeedback(false); hidePanels();
-    let cont = [];
-    try { const r = await apiPost('/api/contatti-brand', { brand: currentBrand }); cont = (r && r.contatti) || []; } catch {}
-    renderContatti(cont, false);
+    const info = await caricaBrandInfo();
+    renderContatti(info.contatti, false);
     document.getElementById('c-help-type').classList.add('show');
   });
 
   // ------- Tipo di aiuto: pratica o altro -------
-  document.getElementById('ht-pratica').addEventListener('click', () => { hidePanels(); document.getElementById('c-tipo-pratica').classList.add('show'); });
-
-  // Scelta del tipo di pratica -> poi si chiedono CF e opportunity
-  document.querySelectorAll('#c-tipo-pratica .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      currentTipoPratica = chip.dataset.pratica;
-      document.getElementById('c-escalate-tipo').textContent = currentTipoPratica;
-      hidePanels();
-      document.getElementById('c-escalate').classList.add('show');
-    });
+  document.getElementById('ht-pratica').addEventListener('click', async () => {
+    const info = await caricaBrandInfo();
+    renderTipiPratica(info.tipiPratica);
+    hidePanels();
+    document.getElementById('c-tipo-pratica').classList.add('show');
   });
+
   document.getElementById('ht-altro').addEventListener('click', () => { hidePanels(); document.getElementById('c-escalate-altro').classList.add('show'); });
 
   function mostraSegnalazione(){
@@ -1329,6 +1353,7 @@
     }
     renderProcedure(d.procedure || []);
     renderContattiAdmin(d.contatti || []);
+    renderTipiPraticaAdmin(d.tipiPratica || []);
     renderOfferte(d.offerte || []);
   }
 
@@ -1406,6 +1431,28 @@
       </details>`).join('') || '<p class="cont-empty">Nessun contatto per questo brand.</p>';
   }
 
+  function renderTipiPraticaAdmin(list){
+    const c = document.getElementById('lista-tipi-pratica');
+    c.innerHTML = list.map(t => `
+      <details class="cont-item">
+        <summary>
+          <span class="ci-title">${esc(t.nome || '(senza nome)')}</span>
+          ${t.nota ? '<span class="ci-badge">' + esc(t.nota) + '</span>' : ''}
+          ${badgeOrigine(t.origine)}
+          ${t.attivo ? '' : '<span class="ci-off">disattivato</span>'}
+        </summary>
+        <div class="cont-body" data-id="${attr(t.id)}">
+          <label class="field"><span class="label-text">Nome dell'operazione</span><input type="text" data-f="nome" value="${attr(t.nome || '')}"></label>
+          <label class="field"><span class="label-text">Nota (es. solo luce)</span><input type="text" data-f="nota" value="${attr(t.nota || '')}"></label>
+          <label class="cont-check"><input type="checkbox" data-f="attiva" ${t.attivo ? 'checked' : ''}> Attivo (se tolto, il dealer non lo vede)</label>
+          <div class="cont-actions">
+            <button class="btn-save" data-act="save">Salva</button>
+            <button class="btn-del" data-act="del">Elimina</button>
+          </div>
+        </div>
+      </details>`).join('') || '<p class="cont-empty">Nessun tipo di pratica per questo brand.</p>';
+  }
+
   function renderOfferte(list){
     const c = document.getElementById('lista-offerte');
     c.innerHTML = list.map(o => `
@@ -1465,6 +1512,7 @@
   }
   collegaLista('lista-procedure', 'procedura');
   collegaLista('lista-contatti', 'contatto');
+  collegaLista('lista-tipi-pratica', 'tipoPratica');
   collegaLista('lista-offerte', 'offerta');
 
   // Apre la voce appena creata e mette il cursore sul primo campo.
@@ -1494,6 +1542,11 @@
   document.getElementById('add-contatto').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true;
     await aggiungi('contatto', { ufficio: 'Nuovo contatto', area: '' });
+    e.currentTarget.disabled = false;
+  });
+  document.getElementById('add-tipo-pratica').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    await aggiungi('tipoPratica', { nome: 'Nuova operazione', nota: '' });
     e.currentTarget.disabled = false;
   });
   document.getElementById('add-offerta').addEventListener('click', async (e) => {

@@ -40,7 +40,10 @@ export default async function handler(request) {
                     FROM contatto WHERE brand = ${brand} ORDER BY sort_order, id`
         : await sql`SELECT id, brand, area, ufficio, richieste, tel, email, orari, link, nota, origine, attivo, sort_order
                     FROM contatto ORDER BY brand, sort_order, id`;
-      return json({ procedure, offerte, contatti });
+      const tipiPratica = brand
+        ? await sql`SELECT id, brand, nome, nota, origine, attivo, sort_order FROM tipo_pratica WHERE brand = ${brand} ORDER BY sort_order, id`
+        : await sql`SELECT id, brand, nome, nota, origine, attivo, sort_order FROM tipo_pratica ORDER BY brand, sort_order, id`;
+      return json({ procedure, offerte, contatti, tipiPratica });
     }
 
     const body = await request.json();
@@ -78,6 +81,16 @@ export default async function handler(request) {
           VALUES (${id}, ${brand}, ${S(body.area, 120)}, ${S(body.ufficio, 200)}, ${S(body.richieste, 500)},
                   ${S(body.tel, 80)}, ${S(body.email, 200)}, ${S(body.orari, 200)}, ${S(body.link, 500)}, ${S(body.nota, 500)},
                   'manuale', TRUE, COALESCE((SELECT MAX(sort_order) + 1 FROM contatto WHERE brand = ${brand}), 0))
+          RETURNING id`;
+        invalidaCache();
+        return json({ ok: true, id: row.id });
+      }
+      if (tipo === 'tipoPratica') {
+        const id = S(body.id, 80) || (brand + ':tp' + Date.now());
+        const [row] = await sql`
+          INSERT INTO tipo_pratica (id, brand, nome, nota, origine, attivo, sort_order)
+          VALUES (${id}, ${brand}, ${S(body.nome, 120)}, ${S(body.nota, 200)}, 'manuale', TRUE,
+                  COALESCE((SELECT MAX(sort_order) + 1 FROM tipo_pratica WHERE brand = ${brand}), 0))
           RETURNING id`;
         invalidaCache();
         return json({ ok: true, id: row.id });
@@ -124,6 +137,15 @@ export default async function handler(request) {
         invalidaCache();
         return json({ ok: true });
       }
+      if (tipo === 'tipoPratica') {
+        if (!body.id) return json({ error: 'id mancante' }, 400);
+        await sql`
+          UPDATE tipo_pratica SET nome = ${S(body.nome, 120)}, nota = ${S(body.nota, 200)},
+            attivo = ${body.attiva !== false}, updated_at = NOW()
+          WHERE id = ${S(body.id, 80)}`;
+        invalidaCache();
+        return json({ ok: true });
+      }
       return json({ error: 'tipo non valido' }, 400);
     }
 
@@ -131,6 +153,7 @@ export default async function handler(request) {
       if (tipo === 'procedura')      await sql`DELETE FROM procedura WHERE id = ${S(body.id, 80)}`;
       else if (tipo === 'offerta')   await sql`DELETE FROM offerta   WHERE id = ${Number(body.id)}`;
       else if (tipo === 'contatto')  await sql`DELETE FROM contatto  WHERE id = ${S(body.id, 80)}`;
+      else if (tipo === 'tipoPratica') await sql`DELETE FROM tipo_pratica WHERE id = ${S(body.id, 80)}`;
       else return json({ error: 'tipo non valido' }, 400);
       invalidaCache();
       return json({ ok: true });
