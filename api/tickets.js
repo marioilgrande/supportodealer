@@ -11,7 +11,7 @@ export default async function handler(request) {
   try {
     if (request.method === 'GET') {
       const rows = await sql`
-        SELECT id, codice, negozio, sis_sub, agenzia, categoria, colore,
+        SELECT id, codice, brand, negozio, sis_sub, agenzia, categoria, colore,
                messaggio, esito, cf_cliente, num_opportunity, nota_controllo,
                tipo_pratica, risposta_ok, created_at
         FROM ticket

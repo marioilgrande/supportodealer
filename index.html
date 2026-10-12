@@ -19,33 +19,33 @@
     src: url("/assets/montserrat.woff2") format("woff2");
   }
   :root {
-    --paper: #f3faf9;
+    --paper: #f4f6f8;
     --paper-raised: #ffffff;
-    --ink: #12211e;
-    --ink-soft: #4d6864;
-    --line: #d3e6e3;
-    --accent: #00a99d;
-    --accent-ink: #00443e;
-    --accent-soft: #d8f2ee;
+    --ink: #16212b;
+    --ink-soft: #56636f;
+    --line: #dde3e8;
+    --accent: #33475b;
+    --accent-ink: #1b2a38;
+    --accent-soft: #e8edf2;
     --sev-red: #c14f3f;
     --sev-red-soft: #f8e2dd;
     --sev-amber: #a8791f;
     --sev-amber-soft: #f8ecd4;
     --sev-green: #4c7a3f;
     --sev-green-soft: #e6efdc;
-    --shadow: 0 1px 2px rgba(18,33,30,0.06), 0 8px 24px -12px rgba(18,33,30,0.18);
+    --shadow: 0 1px 2px rgba(22,33,43,0.06), 0 8px 24px -12px rgba(22,33,43,0.18);
     --radius: 10px;
     color-scheme: light;
   }
   :root[data-theme="dark"] {
-    --paper: #0f1715;
-    --paper-raised: #172420;
-    --ink: #e4f2ef;
-    --ink-soft: #93aca6;
-    --line: #263833;
-    --accent: #3cd6c5;
-    --accent-ink: #c9f5ee;
-    --accent-soft: #1b3934;
+    --paper: #11161b;
+    --paper-raised: #192129;
+    --ink: #e6edf3;
+    --ink-soft: #98a6b3;
+    --line: #2a343e;
+    --accent: #5d7690;
+    --accent-ink: #dbe5ee;
+    --accent-soft: #222d38;
     --sev-red: #e0897c;
     --sev-red-soft: #3a2621;
     --sev-amber: #d9ac54;
@@ -57,14 +57,14 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --paper: #0f1715;
-      --paper-raised: #172420;
-      --ink: #e4f2ef;
-      --ink-soft: #93aca6;
-      --line: #263833;
-      --accent: #3cd6c5;
-      --accent-ink: #c9f5ee;
-      --accent-soft: #1b3934;
+      --paper: #11161b;
+      --paper-raised: #192129;
+      --ink: #e6edf3;
+      --ink-soft: #98a6b3;
+      --line: #2a343e;
+      --accent: #5d7690;
+      --accent-ink: #dbe5ee;
+      --accent-soft: #222d38;
       --sev-red: #e0897c;
       --sev-red-soft: #3a2621;
       --sev-amber: #d9ac54;
@@ -115,7 +115,8 @@
     width: 100%; max-width: 420px; background: var(--paper-raised); border: 1px solid var(--line);
     border-radius: 18px; box-shadow: var(--shadow); padding: 26px 24px 28px; font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif;
   }
-  .phone-card .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .phone-card .brand-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-bottom: 18px; }
+  .phone-card .brand-row > span { white-space: nowrap; }
   .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
   .brand-row span { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
   .phone-card h2 { font-size: 1.3rem; margin: 0 0 6px; text-wrap: balance; font-weight: 800; }
@@ -209,7 +210,7 @@
   .help-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .tour-overlay {
-    position: fixed; inset: 0; background: rgba(18,33,30,0.55); backdrop-filter: blur(2px);
+    position: fixed; inset: 0; background: rgba(22,33,43,0.55); backdrop-filter: blur(2px);
     display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
   }
   .tour-overlay[hidden] { display: none; }
@@ -301,11 +302,15 @@
   #admin-content.show { display: block; }
   /* --- scelta del brand --- */
   .brand-pick { display: flex; gap: 8px; flex-wrap: wrap; }
-  .brand-chip { flex: 1 1 30%; min-width: 96px; padding: 11px 10px; border-radius: 10px; cursor: pointer;
-    border: 1.5px solid var(--line); background: var(--paper); color: var(--ink);
-    font-family: inherit; font-size: 0.92rem; font-weight: 700; transition: all .15s; }
+  /* ogni tasto ha gia' i colori del suo brand (data-brand sul tasto stesso) */
+  .brand-chip { flex: 1 1 0; min-width: 0; padding: 11px 6px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid transparent; background: var(--accent-soft); color: var(--accent-ink);
+    font-family: inherit; font-size: 0.92rem; font-weight: 800; letter-spacing: .01em;
+    box-shadow: inset 0 -3px 0 var(--accent); transition: opacity .15s, border-color .15s; }
   .brand-chip:hover { border-color: var(--accent); }
-  .brand-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .brand-chip.on { background: var(--hero); color: #fff; box-shadow: inset 0 -3px 0 var(--accent-2), 0 6px 16px -8px var(--accent); }
+  .brand-pick:has(.on) .brand-chip:not(.on) { opacity: .6; }
+  .brand-pick:has(.on) .brand-chip:not(.on):hover { opacity: 1; }
 
   /* --- schede a blocchi (tabelle, note, elenchi) --- */
   .scheda-tit { font-size: 1.05rem; font-weight: 800; margin: 0 0 2px; }
@@ -396,6 +401,59 @@
   .note-banner { margin-top: 26px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); font-family: "Montserrat", -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 0.85rem; color: var(--ink-soft); line-height: 1.5; }
   .note-banner b { color: var(--ink); }
 
+
+  /* ---------- Colori dei brand ----------
+     Gli stessi dei portali info-utili. Il tema si applica a qualsiasi elemento
+     con data-brand: la vista dealer (dopo la scelta), il pannello Contenuti,
+     i tasti di scelta e i badge delle richieste. Senza brand resta neutro. */
+  :root {
+    --hero: linear-gradient(125deg, #1b2a38, #33475b);
+    --accent-2: #8b9bab;
+    --band: linear-gradient(90deg, #007a4d 0 33.3%, #1C3155 33.3% 66.6%, #005578 66.6%);
+  }
+  [data-brand="plenitude"] {
+    --accent: #007a4d; --accent-ink: #00402b; --accent-soft: #e3f4ec; --accent-2: #FFCD00;
+    --hero: linear-gradient(125deg, #00402b 0%, #007a4d 45%, #009E62 72%, #6fae4e 100%);
+    --band: linear-gradient(90deg, #009E62 0%, #4fae57 45%, #95B849 75%, #FFCD00 100%);
+  }
+  [data-brand="sorgenia"] {
+    --accent: #1C3155; --accent-ink: #101f38; --accent-soft: #eef1f7; --accent-2: #95C11F;
+    --hero: linear-gradient(125deg, #101f38 0%, #1C3155 48%, #3c6a52 100%);
+    --band: linear-gradient(90deg, #1C3155 0%, #274373 50%, #95C11F 100%);
+  }
+  [data-brand="alperia"] {
+    --accent: #005578; --accent-ink: #00293a; --accent-soft: #eaf3f6; --accent-2: #12a3a8;
+    --hero: linear-gradient(120deg, #00293a 0%, #005578 45%, #12a3a8 100%);
+    --band: linear-gradient(90deg, #005578 0%, #12a3a8 60%, #4bb86e 100%);
+  }
+  :root[data-theme="dark"] [data-brand="plenitude"] { --accent: #1f9e66; --accent-ink: #c8f1dc; --accent-soft: #143a2a; }
+  :root[data-theme="dark"] [data-brand="sorgenia"]  { --accent: #5b7bb8; --accent-ink: #d6e0f5; --accent-soft: #1d2a44; }
+  :root[data-theme="dark"] [data-brand="alperia"]   { --accent: #1a8db3; --accent-ink: #c8eaf5; --accent-soft: #0f3442; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) [data-brand="plenitude"] { --accent: #1f9e66; --accent-ink: #c8f1dc; --accent-soft: #143a2a; }
+    :root:not([data-theme="light"]) [data-brand="sorgenia"]  { --accent: #5b7bb8; --accent-ink: #d6e0f5; --accent-soft: #1d2a44; }
+    :root:not([data-theme="light"]) [data-brand="alperia"]   { --accent: #1a8db3; --accent-ink: #c8eaf5; --accent-soft: #0f3442; }
+  }
+
+  /* fascia a tre colori nel titolo: il portale e' dei tre brand */
+  .masthead h1::after { content: ""; display: block; width: 120px; height: 4px; border-radius: 4px;
+    margin-top: 8px; background: linear-gradient(90deg, #007a4d 0 33.3%, #1C3155 33.3% 66.6%, #005578 66.6%); }
+  .bn { font-weight: 800; color: var(--accent); }
+
+  /* scheda del dealer: fascia in alto col colore del brand scelto */
+  .phone-card { background: var(--band) top / 100% 6px no-repeat, var(--paper-raised); padding-top: 30px;
+    transition: box-shadow .2s; }
+  .brand-dot { background: var(--hero); box-shadow: 0 0 0 3px var(--accent-soft); }
+  #brand-nome { font-size: 0.68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+    color: #fff; background: var(--hero); padding: 3px 9px; border-radius: 999px; }
+  #brand-nome:empty { display: none; }
+  .submit-btn { background: var(--hero); }
+
+  /* brand della richiesta nella vista admin */
+  .ticket-brand { display: inline-block; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: 5px; margin: 0 4px 7px 0; background: var(--accent-soft); color: var(--accent-ink);
+    box-shadow: inset 3px 0 0 var(--accent); }
+
   @media (max-width: 860px) {
     .board { grid-template-columns: 1fr; }
     .stat-strip { grid-template-columns: repeat(2, 1fr); }
@@ -406,7 +464,7 @@
   <div class="masthead">
     <div style="max-width:640px;">
       <h1>Supporto Dealer On Line</h1>
-      <p class="body-face">Assistenza per i punti vendita <b>Plenitude</b>, <b>Sorgenia</b> e <b>Alperia</b>. Risposte immediate e supporto che velocizzano l'operativit&agrave;. Per le richieste che richiedono un intervento avrai la possibilit&agrave; di inserire i dati per inviare segnalazione a <b>Mario</b>.</p>
+      <p class="body-face">Assistenza per i punti vendita <b class="bn" data-brand="plenitude">Plenitude</b>, <b class="bn" data-brand="sorgenia">Sorgenia</b> e <b class="bn" data-brand="alperia">Alperia</b>. Risposte immediate e supporto che velocizzano l'operativit&agrave;. Per le richieste che richiedono un intervento avrai la possibilit&agrave; di inserire i dati per inviare segnalazione a <b>Mario</b>.</p>
     </div>
     <div class="preview-switch">
       <span class="preview-switch-label">Anteprima</span>
@@ -423,7 +481,7 @@
       <div class="phone-card">
         <div id="form-step">
           <div class="brand-row">
-            <span class="brand-dot"></span><span>Assistente Dealer</span>
+            <span class="brand-dot"></span><span>Assistente Dealer</span><b id="brand-nome"></b>
             <button type="button" class="help-btn" id="help-open">Come funziona?</button>
           </div>
           <h2>Ciao! <span class="wave">👋</span> Come posso aiutarti?</h2>
@@ -698,7 +756,7 @@
     </div>
     </div><!-- /#panel-richieste -->
 
-    <div id="panel-contenuti" hidden>
+    <div id="panel-contenuti" data-brand="plenitude" hidden>
       <p class="contenuti-intro">Qui modifichi <b>risposte, offerte e contatti</b> di ogni brand: le modifiche valgono <b>subito</b>, senza pubblicare nulla. Le voci segnate <b>sync</b> arrivano dai portali info-utili (Plenitude, Sorgenia, Alperia) e vengono riscritte al prossimo allineamento: per contenuti tuoi usa <b>+ Aggiungi</b>, quelli restano.</p>
 
       <div class="brand-pick" id="admin-brand" style="margin-bottom:18px;">
@@ -950,6 +1008,8 @@
     const b = e.target.closest('.brand-chip'); if (!b) return;
     currentBrand = b.dataset.brand; brandInfo = null;
     document.querySelectorAll('#brand-pick .brand-chip').forEach(x => x.classList.toggle('on', x === b));
+    document.getElementById('view-form').dataset.brand = currentBrand;
+    document.getElementById('brand-nome').textContent = b.textContent.trim();
     document.getElementById('brand-hint').style.display = 'none';
   });
   function brandScelto(){
@@ -1343,6 +1403,7 @@
       });
     });
   }
+  const BRAND_NOME = { plenitude: 'Plenitude', sorgenia: 'Sorgenia', alperia: 'Alperia' };
   function ticketCard(t, key){
     const varMap = { rosso:'--sev-red', giallo:'--sev-amber', verde:'--sev-green' };
     const softMap = { rosso:'--sev-red-soft', giallo:'--sev-amber-soft', verde:'--sev-green-soft' };
@@ -1352,6 +1413,7 @@
     if (isBolletta && t.esito === 'in_attesa'){ label = 'Analisi completata'; cls = 'done'; }
     return `<article class="ticket" style="--stripe:var(${varMap[key]})">
       <div class="ticket-top"><span class="ticket-store">${esc(t.negozio||'—')}</span><span class="ticket-time mono">${timeago(t.created_at)}</span></div>
+      ${BRAND_NOME[t.brand] ? `<span class="ticket-brand" data-brand="${t.brand}">${BRAND_NOME[t.brand]}</span>` : ''}
       <span class="ticket-cat" style="background:var(${softMap[key]}); color:var(${varMap[key]})">${esc(t.categoria)}</span>
       ${t.tipo_pratica ? `<span class="ticket-cat" style="background:var(--accent-soft); color:var(--accent-ink)">${esc(t.tipo_pratica)}</span>` : ''}
       <p class="ticket-note">${esc(t.messaggio)}</p>
@@ -1397,6 +1459,7 @@
     const b = e.target.closest('.brand-chip'); if (!b) return;
     adminBrand = b.dataset.brand;
     document.querySelectorAll('#admin-brand .brand-chip').forEach(x => x.classList.toggle('on', x === b));
+    document.getElementById('panel-contenuti').dataset.brand = adminBrand;
     loadContenuti();
   });
 
