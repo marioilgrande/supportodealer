@@ -450,7 +450,7 @@
               <span class="field-hint" id="allegati-hint">Nessun file selezionato.</span>
             </label>
             <p class="field-hint" style="margin:2px 0 0; line-height:1.35;">⚠️ Dev'essere il <b>PDF originale</b> scaricato dal sito o dall'app del fornitore. Una <b>scansione</b> o una <b>foto salvata in PDF</b> non contiene il testo: in quel caso non riesco a leggere i dati.</p>
-            <button type="button" class="submit-btn body-face" id="f-analizza" style="margin-top:10px;">📊 Analizza la bolletta e confronta con ACEA</button>
+            <button type="button" class="submit-btn body-face" id="f-analizza" style="margin-top:10px;">📊 Analizza la bolletta e confronta le offerte</button>
           </div>
 
           <button class="submit-btn body-face" id="f-submit">Chiedi</button>
@@ -475,7 +475,7 @@
             <div id="c-scheda-blocchi"></div>
           </div>
 
-          <!-- contatti del brand (sostituiscono Dealer Support + SIS/SUB) -->
+          <!-- contatti del brand -->
           <div class="ai-answer" id="c-contatti">
             <span class="tag">Chi contattare</span>
             <p class="scheda-sub" id="c-contatti-sub"></p>
@@ -486,8 +486,8 @@
           <div class="ai-answer" id="c-bolletta">
             <span class="tag">Analisi bolletta</span>
             <div id="c-bolletta-recap" class="procedure-body"></div>
-            <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-bolletta-link" style="margin-top:12px;">📊 Apri il confronto con le offerte ACEA &rarr;</a>
-            <p class="field-hint" style="margin-top:10px;">Il confronto è sulla sola <b>spesa di vendita</b> (la materia): rete, oneri e imposte sono uguali per tutti i fornitori. Il risparmio è stimato dal comparatore ACEA con i suoi indici aggiornati.</p>
+            <a href="#" target="_blank" rel="noopener" class="procedure-link" id="c-bolletta-link" style="margin-top:12px;">📊 Apri il confronto con le offerte &rarr;</a>
+            <p class="field-hint" style="margin-top:10px;">Il confronto è sulla sola <b>spesa di vendita</b> (la materia): rete, oneri e imposte sono uguali per tutti i fornitori. Il risparmio è stimato dal comparatore del brand con i suoi indici aggiornati.</p>
           </div>
 
           <!-- quale negozio? (nome scritto incompleto o ambiguo) -->
@@ -615,9 +615,9 @@
             <p style="margin:0;">Perfetto, sono contento di esserti stato utile! 🙂 Se ti serve altro, scrivimi pure quando vuoi.</p>
           </div>
 
-          <!-- ESITO Supporto ACEA: non risolto (nessuna segnalazione a Mario) -->
-          <div id="c-final-acea" class="outcome-block outcome-ok">
-            <span class="tag">Dealer Support</span>
+          <!-- ESITO contatti: non risolto (nessuna segnalazione a Mario) -->
+          <div id="c-final-contatti" class="outcome-block outcome-ok">
+            <span class="tag">Assistenza del brand</span>
             <p style="margin:0;">Per questo tipo di richiesta il canale corretto resta l&rsquo;assistenza del brand, che trovi nei contatti qui sopra. Se ti serve altro, scrivimi pure. 🙂</p>
           </div>
 
@@ -769,7 +769,7 @@
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-argomento','c-answer','c-scheda','c-contatti','c-bolletta','c-clarify','c-portale','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-acea','c-final-simone']
+    ['c-greeting','c-argomento','c-answer','c-scheda','c-contatti','c-bolletta','c-clarify','c-portale','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-contatti','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -983,7 +983,7 @@
       + '<span><b>Spesa di vendita (confrontabile):</b> ' + eur(rp.luce.costoAttuale) + '</span></div></div>';
     document.getElementById('c-bolletta-recap').innerHTML = html || 'Dati letti dalla bolletta.';
     document.getElementById('c-bolletta-link').href = r.url;
-    showGreeting('Ho letto la bolletta! Ecco cosa risulta 👇 Premi il pulsante per vedere il confronto con ACEA.');
+    showGreeting('Ho letto la bolletta! Ecco cosa risulta 👇 Premi il pulsante per vedere il confronto.');
     document.getElementById('c-bolletta').classList.add('show');
   }
   async function analizzaBolletta(){
@@ -1147,19 +1147,24 @@
   // ------- Guida "Come funziona?" -------
   const TOUR = [
     {
-      titolo: 'Scrivimi come parleresti a un collega',
-      testo: 'Metti il nome del tuo <b>negozio</b> (basta anche solo l\'inizio) e raccontami cosa ti serve <b>con parole tue</b>. Non ci sono moduli da compilare né categorie da indovinare.',
-      illu: '<span class="ex">«come trovo il link per la firma OTP?»</span><span class="ex">«come faccio un subentro o una voltura?»</span><span class="ex">«prezzo e scadenza dell\'offerta Sprint»</span><span class="ex">«a che punto è la pratica di un cliente?»</span><span class="ex">«il cliente non riceve l\'OTP»</span><span class="ex">«il portale non funziona»</span>'
+      titolo: 'Prima scegli il brand',
+      testo: 'Tocca <b>Plenitude</b>, <b>Sorgenia</b> o <b>Alperia</b>: da quel momento risposte, offerte, contatti e procedure sono <b>solo di quel brand</b>. Ogni brand lavora in modo diverso, per questo non si indovina.',
+      illu: 'Poi metti il nome del tuo <b>negozio</b> e racconta cosa ti serve <b>con parole tue</b>: niente moduli da compilare.'
     },
     {
       titolo: 'Ho già la risposta al 90% di quello che ti serve',
-      testo: 'Nella maggior parte dei casi ti rispondo <b>subito</b>: procedure del portale passo-passo, <b>offerte</b> (prezzi, scadenze, commercializzazione), verifica pratiche, OTP, disservizi. Il restante 10% — dove serve mettere mano — lo chiude <b>Mario</b>: così arrivi al <b>100%</b>.',
-      illu: 'Risposte pronte a qualsiasi ora. Se non capisco cosa ti serve, non tiro a indovinare: ti faccio una domanda per capire meglio.'
+      testo: 'Procedure passo-passo, <b>offerte</b> (prezzi, scadenze, commercializzazione), <b>costi e tempi</b> delle pratiche, moduli e contatti. Il restante 10% &mdash; dove serve mettere mano &mdash; lo chiude <b>Mario</b>: così arrivi al <b>100%</b>.',
+      illu: '<span class="ex">«come faccio una voltura?»</span><span class="ex">«quanto costa un aumento di potenza?»</span><span class="ex">«prezzi e scadenze delle offerte»</span><span class="ex">«a chi mi rivolgo se la pratica va in KO?»</span>'
+    },
+    {
+      titolo: 'Guarda il video e inserisci il contratto',
+      testo: 'Chiedimi <b>come si inserisce un contratto</b> e ti apro il <b>video della procedura</b> sul portale del brand, con i <b>capitoli</b>: tocca un passaggio e il video salta direttamente lì.',
+      illu: 'Ci sono anche i <b>consigli pratici</b> (cosa preparare prima) e, dove serve, l&rsquo;ordine giusto delle operazioni.'
     },
     {
       titolo: 'Carica la bolletta e scopri quanto risparmia il cliente',
-      testo: 'Quando parli di <b>analisi bolletta</b>, puoi allegare il <b>PDF della bolletta</b>: leggo i dati e ti apro il <b>confronto con le offerte ACEA</b>, con il <b>risparmio stimato</b> già pronto da mostrare al cliente.',
-      illu: '⚠️ Dev\'essere il <b>PDF originale</b> scaricato dal sito o dall\'app del fornitore. Una scansione o una foto salvata in PDF non contiene il testo, quindi non riesco a leggere i dati.'
+      testo: 'Quando parli di <b>analisi bolletta</b>, puoi allegare il <b>PDF della bolletta</b>: leggo i dati e ti apro il <b>confronto con le offerte del brand</b>, con il <b>risparmio stimato</b> già pronto da mostrare al cliente.',
+      illu: '⚠️ Dev&rsquo;essere il <b>PDF originale</b> scaricato dal sito o dall&rsquo;app del fornitore. Una scansione o una foto salvata in PDF non contiene il testo, quindi non riesco a leggere i dati.'
     },
     {
       titolo: 'Rispondimi sempre con i tasti ⚠️',
@@ -1168,13 +1173,13 @@
     },
     {
       titolo: 'Se non hai risolto, ti do i contatti giusti',
-      testo: 'Ti mostro i <b>contatti del brand</b> adatti alla tua richiesta (help desk, back office, servizio clienti). Dopo dimmi com\'è andata.',
-      illu: 'Ti mostro i riferimenti giusti del brand: help desk, back office, servizio clienti, con numeri ed email.'
+      testo: 'Ti mostro i <b>contatti del brand</b> adatti alla tua richiesta (help desk, back office, check call, servizio clienti), con numeri ed email. Dopo dimmi com&rsquo;è andata.',
+      illu: 'Metto per primo il riferimento che c&rsquo;entra con quello che hai chiesto: se cerchi il numero della check call, lo trovi in cima.'
     },
     {
       titolo: 'Se serve, la segnalazione arriva a Mario',
       testo: 'Se nemmeno il supporto ha risolto, ti chiedo il <b>tipo di pratica</b>, i <b>dati del cliente</b> (codice fiscale e opportunity) e i <b>tuoi riferimenti</b>. La segnalazione va a <b>Mario</b>, che ti ricontatta. È così che arriviamo al 100%.',
-      illu: 'Lasci nome e un recapito (telefono o email): Mario sa già cosa controllare e come raggiungerti.'
+      illu: 'I tipi di pratica che vedi sono <b>solo quelli che il tuo brand può lavorare</b>: niente operazioni proposte per sbaglio.'
     }
   ];
   let tourI = 0;

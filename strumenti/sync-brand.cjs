@@ -238,7 +238,12 @@ for (const [brand, info] of Object.entries(BRANDS)) {
     voce(brand, 'costi-prestazioni', 'Costi e tempi delle prestazioni', bl, {
       sottotitolo: 'Interventi sul contatore: quanto costano e quanto durano.',
       etichetta: 'Prestazioni',
-      keywords: 'costo, costi, quanto costa, prezzo, tempi, quanto tempo, prestazione, prestazioni, aumento di potenza, diminuzione, voltura, spostamento contatore, verifica contatore, disalimentazione, stacco, cambio tensione, potenzialita'
+      // Solo nomi di operazioni (niente 'costo'/'prezzo' generici): cosi' se queste
+      // keyword combaciano la domanda parla davvero di un intervento sul contatore
+      // e non del prezzo di un'offerta commerciale.
+      keywords: ['prestazione', 'prestazioni']
+        .concat(d.PRESTAZIONI.map(x => String(x.nome || '').toLowerCase().trim()))
+        .filter((v, i, a) => v && a.indexOf(v) === i).join(', ')
     });
     console.log('  costi prestazioni: ' + d.PRESTAZIONI.length + ' voci');
   }

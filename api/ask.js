@@ -23,6 +23,22 @@ async function localInterpret(msg, brand) {
 const COLORE    = { portale: 'giallo', contatti: 'rosso', offerte: 'verde', avanzamento: 'verde', unclear: 'giallo' };
 const CATEGORIA = { portale: 'Procedura', contatti: 'Chi contattare', offerte: 'Info offerte', avanzamento: 'Richiesta avanzamento', unclear: 'Da chiarire' };
 
+// Mette per primi i contatti che c'entrano con la domanda: chi chiede "il numero
+// della check call" deve trovarsi quel riferimento in cima, non in fondo all'elenco.
+function ordinaContatti(lista, messaggio) {
+  const parole = String(messaggio || '').toLowerCase().split(/[^a-z0-9\u00e0-\u00ff]+/).filter(w => w.length >= 4);
+  const punteggio = (c) => {
+    const campo = [c.ufficio, c.area, c.richieste, c.nota].join(' ').toLowerCase();
+    let p = 0;
+    for (const w of parole) if (campo.includes(w)) p += 2;
+    for (let i = 0; i < parole.length - 1; i++) if (campo.includes(parole[i] + ' ' + parole[i + 1])) p += 3;
+    return p;
+  };
+  return (lista || []).map(c => ({ c, p: punteggio(c) }))
+    .sort((a, b) => b.p - a.p)
+    .map(x => x.c);
+}
+
 export default async function handler(request) {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   let body;
@@ -49,10 +65,21 @@ export default async function handler(request) {
     if (!intp || !intp.intent) intp = await localInterpret(messaggio, brand);
 
     // Le parole chiave hanno la meglio: l'AI non le vede (riceve solo titolo+id).
-    // Una sola procedura -> rispondo con quella; piu' di una -> chiedo quale.
+    // NOTA: se il dealer chiede un contatto (un numero, una mail) NON si dirotta
+    // su una procedura, altrimenti chiedendo "il numero della check call" si
+    // finisce sulla procedura della check call invece che sul contatto.
+    const matches = await matchProcedure(messaggio, brand);
     const senzaProcedura = intp.intent === 'portale' && !intp.procedureId;
-    if (senzaProcedura || ['contatti', 'unclear'].includes(intp.intent)) {
-      const matches = await matchProcedure(messaggio, brand);
+
+    // Costo/tempi di un intervento sul contatore: l'AI tende a leggerlo come una
+    // domanda sulle offerte commerciali. Le keyword della scheda prestazioni sono
+    // solo nomi di operazioni, quindi se combacia la domanda parla davvero di quelle.
+    const prestazioni = matches.find(p => /(^|:)costi-prestazioni$/.test(p.id));
+    const chiedeCosto = /cost|quanto|prezz|tariff|spes|tempi/i.test(messaggio);
+
+    if (intp.intent === 'offerte' && prestazioni && chiedeCosto) {
+      intp = { intent: 'portale', procedureId: prestazioni.id, offerFilter: null };
+    } else if (senzaProcedura || intp.intent === 'unclear') {
       if (matches.length === 1) {
         intp = { intent: 'portale', procedureId: matches[0].id, offerFilter: null };
       } else if (matches.length >= 2) {
@@ -78,7 +105,7 @@ export default async function handler(request) {
       payload = { type: 'scheda', scheda: { titolo: proc.label, sottotitolo: proc.sottotitolo, etichetta: proc.etichetta, blocchi: proc.blocchi } };
       rispostaAi = proc.label;
     } else if (proc.type === 'contatti' || proc.type === 'supporto') {
-      payload = { type: 'contatti', contatti: await getContatti(brand) };
+      payload = { type: 'contatti', contatti: ordinaContatti(await getContatti(brand), messaggio) };
       rispostaAi = 'Contatti ' + nomeBrand;
     } else if (proc.type === 'link') {
       payload = { type: 'answer', answer: { kind: 'link', tag: 'Guida passo-passo', body: 'Ho la guida completa per questa procedura:', url: proc.url } };
@@ -96,7 +123,7 @@ export default async function handler(request) {
     payload = { type: 'answer', answer: { kind: 'text', tag: 'Avanzamento pratiche', body: testo } };
     rispostaAi = testo;
   } else if (intp.intent === 'contatti') {
-    payload = { type: 'contatti', contatti: await getContatti(brand) };
+    payload = { type: 'contatti', contatti: ordinaContatti(await getContatti(brand), messaggio) };
     rispostaAi = 'Contatti ' + nomeBrand;
   } else {
     // Non si capisce ancora: nessun ticket finche' non e' chiaro cosa serve.
