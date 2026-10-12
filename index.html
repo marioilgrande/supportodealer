@@ -323,6 +323,15 @@
   .blk-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 8px 12px;
     border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 700; font-size: 0.88rem; }
 
+  /* --- video formativi --- */
+  .blk-video video { width: 100%; border-radius: 10px; background: #000; display: block; }
+  .blk-video .v-meta { font-size: 0.8rem; color: var(--ink-soft); margin: 6px 0 8px; }
+  .blk-cap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .blk-cap button { border: 1px solid var(--line); background: var(--paper); border-radius: 8px;
+    padding: 6px 9px; font-family: inherit; font-size: 0.82rem; cursor: pointer; text-align: left; line-height: 1.35; }
+  .blk-cap button:hover { border-color: var(--accent); }
+  .blk-cap .t { font-weight: 700; color: var(--accent-ink); margin-right: 5px; }
+
   /* --- contatti --- */
   .cont-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--paper); }
   .cont-area { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--accent-ink); font-weight: 700; }
@@ -824,6 +833,15 @@
         (b.righe||[]).map(r => '<tr>' + (r||[]).map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>';
       if (b.tipo === 'nota')    return '<div class="blk"><div class="blk-nota">' + (b.testo||'') + '</div></div>';
       if (b.tipo === 'info')    return '<div class="blk">' + tit + '<div class="blk-info">' + (b.testo||'') + '</div></div>';
+      if (b.tipo === 'video'){
+        const mmss = (sec) => Math.floor(sec/60) + ':' + String(Math.floor(sec%60)).padStart(2,'0');
+        const cap = (b.capitoli||[]).map(c => '<button type="button" data-t="' + Number(c[0]||0) + '"><span class="t">' + mmss(Number(c[0]||0)) + '</span>' + c[1] + '</button>').join('');
+        const cons = (b.consigli||[]).length ? '<p class="blk-tit">Consigli</p><ul>' + b.consigli.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
+        return '<div class="blk blk-video">' + tit +
+          '<video controls preload="metadata"' + (b.copertina ? ' poster="' + esc(b.copertina) + '"' : '') + '><source src="' + esc(b.href||'') + '" type="video/mp4"></video>' +
+          (b.durata ? '<p class="v-meta">Durata ' + esc(b.durata) + (cap ? ' &middot; tocca un passaggio per saltarci' : '') + '</p>' : '') +
+          (cap ? '<div class="blk-cap">' + cap + '</div>' : '') + cons + '</div>';
+      }
       if (b.tipo === 'link' || b.tipo === 'file'){
         const href = b.href || b.url || '';
         const testo = b.testo ? '<p style="margin:0 0 4px;">' + b.testo + '</p>' : '';
@@ -832,6 +850,19 @@
       return b.testo ? '<div class="blk">' + tit + '<div>' + b.testo + '</div></div>' : '';
     }).join('');
   }
+  // I capitoli del video portano al minuto giusto.
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.blk-cap button'); if (!b) return;
+    const v = b.closest('.blk-video') && b.closest('.blk-video').querySelector('video');
+    if (!v) return;
+    const t = Number(b.dataset.t || 0);
+    const vai = () => { v.currentTime = t; v.play().catch(() => {}); };
+    // Al primo click i metadati possono non essere ancora pronti: in quel caso
+    // impostare currentTime non ha effetto, quindi aspetto che arrivino.
+    if (v.readyState >= 1) vai();
+    else { v.addEventListener('loadedmetadata', vai, { once: true }); v.load(); }
+  });
+
   function renderScheda(sc){
     document.getElementById('c-scheda-tag').textContent = sc.etichetta || 'Risposta';
     document.getElementById('c-scheda-tit').textContent = sc.titolo || '';

@@ -77,7 +77,7 @@ function carica(dir, file) {
 }
 function datiBrand(dir) {
   const out = {};
-  for (const f of ['procedure.js', 'contenuti.js', 'offerte.js', 'moduli.js']) Object.assign(out, carica(dir, f));
+  for (const f of ['procedure.js', 'contenuti.js', 'offerte.js', 'moduli.js', 'prestazioni.js']) Object.assign(out, carica(dir, f));
   return out;
 }
 
@@ -189,6 +189,58 @@ for (const [brand, info] of Object.entries(BRANDS)) {
     voce(brand, 'modulistica', 'Modulistica ' + info.nome, bl,
       { etichetta: 'Moduli', keywords: parole('modulo moduli modulistica allegato allegati stampare firmare documento') });
     console.log('  modulistica: ' + d.MODULI.length + ' file');
+  }
+
+  /* video di formazione: inserimento contratti (file copiati in assets/video/) */
+  const F = d.FORMAZIONE || {};
+  if ((F.video || []).length) {
+    const bl = [];
+    if (F.intro)  bl.push({ tipo: 'info', testo: F.intro });
+    if (F.avviso) bl.push({ tipo: 'nota', testo: F.avviso });
+    for (const v of F.video) {
+      bl.push({ tipo: 'video', titolo: (v.etichetta ? v.etichetta + ' \u00b7 ' : '') + v.titolo,
+                href: v.file, copertina: v.copertina, durata: v.durata || '',
+                capitoli: v.capitoli || [], consigli: v.consigli || [] });
+    }
+    voce(brand, 'video-inserimento', 'Video: come inserire i contratti', bl, {
+      sottotitolo: 'Guarda la procedura completa, passo per passo.',
+      etichetta: 'Formazione',
+      keywords: 'video, inserimento, inserire contratto, caricare contratto, come si inserisce, tutorial, guida video, ' +
+                (F.video || []).map(v => (v.titolo || '').toLowerCase()).join(', ')
+    });
+    console.log('  video formativi: ' + F.video.length);
+  }
+
+  /* costi e tempi delle prestazioni sul contatore (per ora solo Sorgenia) */
+  if ((d.PRESTAZIONI || []).length) {
+    const info = d.PRESTAZIONI_INFO || {};
+    const eur = (x) => (typeof x === 'number' ? x.toFixed(2).replace('.', ',') + ' \u20ac' : String(x || ''));
+    const perC = { luce: [], gas: [] };
+    for (const x of d.PRESTAZIONI) {
+      const dl = (typeof x.dl === 'number')
+        ? (x.dl === 0 ? 'nessuno' : eur(x.dl) + (x.dlPerKw ? ' per kW' : ''))
+        : String(x.dl || '');
+      const tot = (typeof x.dl === 'number' && typeof x.sorgenia === 'number' && !x.dlPerKw)
+        ? eur(x.dl + x.sorgenia) : '\u2014';
+      (perC[x.c] || perC.luce).push([
+        x.nome,
+        x.tempi == null ? '\u2014' : (typeof x.tempi === 'number' ? x.tempi + ' gg lavorativi' : String(x.tempi)),
+        dl,
+        x.sorgenia == null ? 'nessuno' : eur(x.sorgenia),
+        tot
+      ]);
+    }
+    const col = ['Prestazione', 'Tempi', 'Costo distributore', 'Costo Sorgenia', 'Totale cliente'];
+    const bl = [{ tipo: 'info', testo: '<strong>' + (info.iva || '') + '</strong>. ' + (info.preventivi || '') + '.' }];
+    if (perC.luce.length) bl.push({ tipo: 'tabella', titolo: 'Luce', colonne: col, righe: perC.luce });
+    if (perC.gas.length)  bl.push({ tipo: 'tabella', titolo: 'Gas',  colonne: col, righe: perC.gas });
+    bl.push({ tipo: 'nota', testo: 'Dove c\u2019\u00e8 <strong>preventivo</strong> il costo lo stabilisce il distributore caso per caso. L\u2019aumento di potenza si paga <strong>per ogni kW in pi\u00f9</strong>, quindi il totale dipende dai kW richiesti.' });
+    voce(brand, 'costi-prestazioni', 'Costi e tempi delle prestazioni', bl, {
+      sottotitolo: 'Interventi sul contatore: quanto costano e quanto durano.',
+      etichetta: 'Prestazioni',
+      keywords: 'costo, costi, quanto costa, prezzo, tempi, quanto tempo, prestazione, prestazioni, aumento di potenza, diminuzione, voltura, spostamento contatore, verifica contatore, disalimentazione, stacco, cambio tensione, potenzialita'
+    });
+    console.log('  costi prestazioni: ' + d.PRESTAZIONI.length + ' voci');
   }
 
   /* materiali formativi allegati (file serviti dal portale) */
