@@ -315,9 +315,18 @@
     color: var(--ink-soft); margin: 0 0 6px; }
   .blk ol, .blk ul { margin: 0; padding-left: 20px; }
   .blk li { margin-bottom: 5px; line-height: 1.5; }
+  .blk-tab { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .blk table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
   .blk th, .blk td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
   .blk th { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+  /* tabelle con molte colonne: nel riquadro stretto diventano schede impilate */
+  .tab-riga { border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-bottom: 8px; background: var(--paper); }
+  .tab-riga .tr-tit { font-weight: 800; margin-bottom: 6px; line-height: 1.35; }
+  .tab-riga .kv { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    padding: 4px 0; border-top: 1px dashed var(--line); font-size: 0.86rem; }
+  .tab-riga .kv:first-of-type { border-top: 0; }
+  .tab-riga .kv .k { color: var(--ink-soft); }
+  .tab-riga .kv .v { font-weight: 700; text-align: right; white-space: nowrap; }
   .blk-nota { background: #fff7e6; border-left: 3px solid var(--sev-amber); padding: 10px 12px; border-radius: 6px; line-height: 1.5; }
   .blk-info { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 6px; line-height: 1.5; }
   .blk-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 8px 12px;
@@ -828,9 +837,24 @@
       const tit = b.titolo ? '<p class="blk-tit">' + esc(b.titolo) + '</p>' : '';
       if (b.tipo === 'passi')   return '<div class="blk">' + tit + '<ol>' + (b.voci||[]).map(v => '<li>' + v + '</li>').join('') + '</ol></div>';
       if (b.tipo === 'lista')   return '<div class="blk">' + tit + '<ul>' + (b.voci||[]).map(v => '<li>' + v + '</li>').join('') + '</ul></div>';
-      if (b.tipo === 'tabella') return '<div class="blk">' + tit + '<table><thead><tr>' +
-        (b.colonne||[]).map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' +
-        (b.righe||[]).map(r => '<tr>' + (r||[]).map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>';
+      if (b.tipo === 'tabella'){
+        const col = b.colonne || [], righe = b.righe || [];
+        // Con 4+ colonne la tabella non entra nel riquadro: ogni riga diventa una
+        // scheda (prima colonna = titolo, le altre come voce/valore). Si legge
+        // anche da telefono, senza sfondare il bordo.
+        if (col.length >= 4){
+          return '<div class="blk">' + tit + righe.map(r => {
+            const celle = r || [];
+            const kv = celle.slice(1).map((c, i) =>
+              '<div class="kv"><span class="k">' + esc(col[i + 1] || '') + '</span><span class="v">' + c + '</span></div>').join('');
+            return '<div class="tab-riga"><div class="tr-tit">' + (celle[0] || '') + '</div>' + kv + '</div>';
+          }).join('') + '</div>';
+        }
+        return '<div class="blk">' + tit + '<div class="blk-tab"><table><thead><tr>' +
+          col.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' +
+          righe.map(r => '<tr>' + (r || []).map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') +
+          '</tbody></table></div></div>';
+      }
       if (b.tipo === 'nota')    return '<div class="blk"><div class="blk-nota">' + (b.testo||'') + '</div></div>';
       if (b.tipo === 'info')    return '<div class="blk">' + tit + '<div class="blk-info">' + (b.testo||'') + '</div></div>';
       if (b.tipo === 'video'){
