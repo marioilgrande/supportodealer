@@ -1,85 +1,19 @@
 /* ============================================================================
-   SYNC CONTENUTI DAI PORTALI INFO-UTILI  ->  import-brand.sql
-   Legge PLENITUDE INFO, SORGENIA INFO, ALPERIA INFO e genera lo script SQL
-   da incollare nel SQL Editor di Neon.
+   SYNC MANUALE DAI PORTALI INFO-UTILI  ->  import-brand.sql
+   Di norma NON serve: il portale si allinea da solo (api/sync.js legge i
+   portali online). Questo script resta come riserva: legge le cartelle locali
+   PLENITUDE INFO, SORGENIA INFO, ALPERIA INFO e genera lo script SQL da
+   incollare nel SQL Editor di Neon.
 
-       node strumenti/sync-brand.js
+       node strumenti/sync-brand.cjs
 
-   Regole:
-   - riscrive SOLO le righe con origine='sync': quello che aggiungi dal
-     pannello (origine='manuale') non viene mai toccato;
-   - i contatti con riservato:true NON vengono esportati (sono riservati agli
-     AM dietro password nei portali di origine; qui il portale e' senza login);
-   - lo script e' in ASCII puro: i caratteri speciali diventano codici Unicode
-     U&'...\20AC...', cosi' il copia-incolla non li corrompe.
+   La trasformazione e' la stessa dell'allineamento automatico (lib/brand-sync.js).
+   Lo script e' in ASCII puro: i caratteri speciali diventano codici Unicode
+   U&'...\20AC...', cosi' il copia-incolla non li corrompe.
    ========================================================================== */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const BASE = path.resolve(__dirname, '../..');          // cartella "HTML MARIO"
 const USCITA = path.resolve(__dirname, '../import-brand.sql');
-
-/* Materiali formativi allegati al portale (file in assets/corsi/).
-   Non vivono nei portali info-utili: li teniamo qui, dichiarati a mano. */
-const ALLEGATI = {
-  plenitude: [{
-    id: 'formazione-corsi',
-    titolo: 'Corsi obbligatori di formazione (APPRENDI)',
-    sottotitolo: 'I materiali dei corsi obbligatori Eni Plenitude, con le risposte dei quiz.',
-    etichetta: 'Formazione',
-    keywords: 'formazione, corso, corsi, apprendi, quiz, test, compliance, codice di condotta, quadro normativo, attestato, obbligatoria',
-    blocchi: [
-      { tipo: 'info', testo: 'Raccolta dei materiali dei <strong>corsi obbligatori</strong> della piattaforma APPRENDI, organizzati per corso con le schermate dei quiz.' },
-      { tipo: 'lista', titolo: 'Corsi inclusi', voci: [
-        'Privacy e protezione dei dati &mdash; 14 risposte',
-        'Quadro normativo per operatori e partner commerciali &mdash; 18 risposte',
-        'Codice di condotta &mdash; 4 risposte',
-        'Sicurezza e protezione dei dati &mdash; 6 risposte',
-        'Fibra ottica &mdash; 10 risposte'
-      ]},
-      { tipo: 'file', titolo: 'Scarica la raccolta dei corsi', testo: 'PDF, 27 pagine', href: 'assets/corsi/corsi-formazione-plenitude.pdf' }
-    ]
-  }],
-  sorgenia: [{
-    id: 'formazione-privacy',
-    titolo: 'Formazione Sorgenia: accesso e test',
-    sottotitolo: 'Come entrare nella Sorgenia Suite, seguire il percorso e completare i test.',
-    etichetta: 'Formazione',
-    keywords: 'formazione, corso, corsi, apprendi, appprendi, suite, quiz, test, compliance, store compliance, privacy, attestato, obbligatoria',
-    blocchi: [
-      { tipo: 'info', testo: 'Guida operativa E2K alla <strong>formazione obbligatoria Sorgenia</strong>: primo accesso alla Suite, percorso APPprendi e risposte ai test.' },
-      { tipo: 'passi', titolo: 'In breve', voci: [
-        'Ricevi la mail di iscrizione e usa il link per accedere alla Sorgenia Suite.',
-        'Al primo accesso imposta la password dal pulsante ricevuto via mail.',
-        'Dalla home apri <strong>APPprendi</strong> &rarr; Formazione &rarr; Catalogo lezioni.',
-        'Apri la card <strong>Store Compliance</strong> e completa il percorso.'
-      ]},
-      { tipo: 'file', titolo: 'Scarica il manuale della formazione', testo: 'PDF, 21 pagine', href: 'assets/corsi/formazione-privacy-sorgenia.pdf' }
-    ]
-  }],
-  alperia: []
-};
-
-const BRANDS = {
-  plenitude: { dir: 'PLENITUDE INFO', nome: 'Plenitude' },
-  sorgenia:  { dir: 'SORGENIA INFO',  nome: 'Sorgenia'  },
-  alperia:   { dir: 'ALPERIA INFO',   nome: 'Alperia'   }
-};
-
-/* ---------- lettura dei file dati (moduli CommonJS o const globali) -------- */
-function carica(dir, file) {
-  const p = path.join(BASE, dir, file);
-  if (!fs.existsSync(p)) return {};
-  try { const m = require(p); if (m && Object.keys(m).length) return m; } catch (e) {}
-  const ctx = {}; vm.createContext(ctx);
-  let src = fs.readFileSync(p, 'utf8')
-    .replace(/^(const|let|var)\s+([A-Z_][A-Za-z0-9_]*)\s*=/gm, 'globalThis.$2 =');
-  try { vm.runInContext(src, ctx, { filename: p }); } catch (e) { console.error('  ! ' + file + ': ' + e.message); }
-  return ctx;
-}
-function datiBrand(dir) {
-  const out = {};
-  for (const f of ['procedure.js', 'contenuti.js', 'offerte.js', 'moduli.js', 'prestazioni.js']) Object.assign(out, carica(dir, f));
-  return out;
-}
 
 /* ---------- letterali SQL in ASCII puro ---------------------------------- */
 function lit(s) {
@@ -98,234 +32,27 @@ function lit(s) {
 }
 const jsonb = (v) => lit(JSON.stringify(v)) + '::jsonb';
 
-/* ---------- parole chiave: servono all'assistente per agganciare ---------- */
-const STOP = new Set(('il lo la i gli le un uno una di a da in con su per tra fra e o che non del della dei delle al alla ai alle dal dalla nel nella sul sulla come cosa quando dove quale quali se si ti ci vi mi ne il tuo tua suo sua come quello questa questo sono essere fare puo puoi deve devi va vai ' +
-  'plenitude sorgenia alperia').split(/\s+/));
-function parole(...testi) {
-  const vis = new Set();
-  for (const t of testi) {
-    for (const w of String(t || '').toLowerCase().replace(/<[^>]*>/g, ' ').replace(/[^a-zà-ù0-9]+/g, ' ').split(/\s+/)) {
-      if (w.length >= 4 && !STOP.has(w)) vis.add(w);
-    }
-  }
-  return [...vis].slice(0, 14).join(', ');
-}
-
-/* ---------- raccolta delle voci ------------------------------------------ */
+(async () => {
+const { FONTI, FILE_DATI, costruisciBrand, eseguiFileDati } = await import('../lib/brand-sync.js');
 const voci = [], contatti = [], offerte = [], tipiPratica = [];
-let ord = 0;
-
-function voce(brand, id, titolo, blocchi, extra = {}) {
-  if (!blocchi || !blocchi.length) return;
-  voci.push({
-    id: brand + ':' + id, brand, titolo,
-    sottotitolo: extra.sottotitolo || '', etichetta: extra.etichetta || '',
-    keywords: extra.keywords || parole(titolo, extra.sottotitolo, extra.etichetta),
-    blocchi, sort_order: ord++
-  });
-}
-const bloccoTesto  = (titolo, testo) => ({ tipo: 'info', titolo, testo });
-const bloccoLista  = (titolo, voci_) => ({ tipo: 'lista', titolo, voci: voci_ });
-const bloccoTab    = (titolo, colonne, righe) => ({ tipo: 'tabella', titolo, colonne, righe });
-
-for (const [brand, info] of Object.entries(BRANDS)) {
-  const d = datiBrand(info.dir);
+for (const [brand, info] of Object.entries(FONTI)) {
   console.log('\n== ' + info.nome + ' ==');
-
-  /* procedure e guide: hanno gia' il formato a blocchi */
-  for (const p of [].concat(d.PROCEDURE || [], d.GUIDE || [])) {
-    voce(brand, p.id || p.titolo.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30), p.titolo, p.blocchi, {
-      sottotitolo: p.sottotitolo, etichetta: p.etichetta,
-      keywords: parole(p.titolo, p.sottotitolo, p.etichetta, (p.blocchi || []).map(b => b.titolo).join(' '))
-    });
+  const d = {};
+  for (const f of FILE_DATI) {
+    const p = path.join(BASE, info.dir, f);
+    if (!fs.existsSync(p)) continue;
+    try { Object.assign(d, eseguiFileDati(vm, fs.readFileSync(p, 'utf8'), p)); }
+    catch (e) { console.error('  ! ' + f + ': ' + e.message); }
   }
-  console.log('  procedure/guide: ' + (((d.PROCEDURE || []).length) + ((d.GUIDE || []).length)));
-
-  /* schede operative Alperia: voltura, subentro, attivazione, allaccio... */
-  let nSchede = 0;
-  for (const [k, m] of Object.entries(d.MODULI_INFO || {})) {
-    const bl = [bloccoTesto(m.titolo, m.testo)];
-    if (m.dettaglio) bl.push(bloccoLista('Nel dettaglio', [].concat(m.dettaglio)));
-    voce(brand, 'scheda-' + k, m.titolo, bl, { etichetta: 'Operazioni' });
-    nSchede++;
-  }
-  if (nSchede) console.log('  schede operative: ' + nSchede);
-
-  /* script della check call (Alperia) */
-  if (d.SCRIPT_IQC && d.SCRIPT_IQC.titolo) {
-    const s = d.SCRIPT_IQC, bl = [];
-    if (s.intro) bl.push(bloccoTesto('In sintesi', s.intro));
-    if (s.numeri) bl.push(bloccoLista('Numeri da cui chiama', [].concat(s.numeri)));
-    if (s.prima) bl.push(bloccoLista('Prima della chiamata', [].concat(s.prima)));
-    if (s.domande) bl.push(bloccoLista('Cosa chiedono al cliente', [].concat(s.domande)));
-    if (s.attenzione) bl.push({ tipo: 'nota', testo: [].concat(s.attenzione).join(' ') });
-    voce(brand, 'script-checkcall', s.titolo, bl, { etichetta: 'Check call' });
-    console.log('  script check call: 1');
-  }
-
-  /* "come leggere": una voce unica per brand, sono spiegazioni brevi */
-  if ((d.COME_LEGGERE || []).length) {
-    voce(brand, 'come-leggere', 'Come leggere le offerte ' + info.nome,
-      (d.COME_LEGGERE).map(x => bloccoTesto(x.titolo, x.testo || (x.voci || []).join(' · '))),
-      { etichetta: 'Offerte', keywords: parole('come leggere offerta prezzo spread commercializzazione sconto', (d.COME_LEGGERE).map(x => x.titolo).join(' ')) });
-    console.log('  come leggere: ' + d.COME_LEGGERE.length + ' voci -> 1 scheda');
-  }
-
-  /* portali e strumenti del brand */
-  if ((d.STRUMENTI || []).length) {
-    voce(brand, 'portali', 'Portali e strumenti ' + info.nome,
-      (d.STRUMENTI).map(s => ({ tipo: 'link', titolo: s.titolo, testo: s.testo || '', href: s.link || s.url || s.href || ((s.links || [])[0] || {}).href || '' })),
-      { etichetta: 'Accessi', keywords: parole('portale accesso link strumenti comparatore inserimento', (d.STRUMENTI).map(s => s.titolo).join(' ')) });
-    console.log('  portali/strumenti: ' + d.STRUMENTI.length);
-  }
-
-  /* modulistica scaricabile (Alperia) */
-  if ((d.MODULI || []).length) {
-    const perCat = {};
-    for (const m of d.MODULI) (perCat[m.cat || 'moduli'] = perCat[m.cat || 'moduli'] || []).push(m);
-    const bl = Object.entries(perCat).map(([cat, lista]) =>
-      bloccoTab(cat.charAt(0).toUpperCase() + cat.slice(1), ['Modulo', 'Per', 'Formato'],
-        lista.map(m => [m.titolo, [m.c, m.cliente].filter(Boolean).join(' · ') || 'tutti', m.formato || ''])));
-    voce(brand, 'modulistica', 'Modulistica ' + info.nome, bl,
-      { etichetta: 'Moduli', keywords: parole('modulo moduli modulistica allegato allegati stampare firmare documento') });
-    console.log('  modulistica: ' + d.MODULI.length + ' file');
-  }
-
-  /* video di formazione: inserimento contratti (file copiati in assets/video/) */
-  const F = d.FORMAZIONE || {};
-  if ((F.video || []).length) {
-    const bl = [];
-    if (F.intro)  bl.push({ tipo: 'info', testo: F.intro });
-    if (F.avviso) bl.push({ tipo: 'nota', testo: F.avviso });
-    for (const v of F.video) {
-      bl.push({ tipo: 'video', titolo: (v.etichetta ? v.etichetta + ' \u00b7 ' : '') + v.titolo,
-                href: v.file, copertina: v.copertina, durata: v.durata || '',
-                capitoli: v.capitoli || [], consigli: v.consigli || [] });
-    }
-    voce(brand, 'video-inserimento', 'Video: come inserire i contratti', bl, {
-      sottotitolo: 'Guarda la procedura completa, passo per passo.',
-      etichetta: 'Formazione',
-      keywords: 'video, inserimento, inserire contratto, caricare contratto, come si inserisce, tutorial, guida video, ' +
-                (F.video || []).map(v => (v.titolo || '').toLowerCase()).join(', ')
-    });
-    console.log('  video formativi: ' + F.video.length);
-  }
-
-  /* costi e tempi delle prestazioni sul contatore (per ora solo Sorgenia) */
-  if ((d.PRESTAZIONI || []).length) {
-    const info = d.PRESTAZIONI_INFO || {};
-    const eur = (x) => (typeof x === 'number' ? x.toFixed(2).replace('.', ',') + ' \u20ac' : String(x || ''));
-    const perC = { luce: [], gas: [] };
-    for (const x of d.PRESTAZIONI) {
-      const dl = (typeof x.dl === 'number')
-        ? (x.dl === 0 ? 'nessuno' : eur(x.dl) + (x.dlPerKw ? ' per kW' : ''))
-        : String(x.dl || '');
-      const tot = (typeof x.dl === 'number' && typeof x.sorgenia === 'number' && !x.dlPerKw)
-        ? eur(x.dl + x.sorgenia) : '\u2014';
-      (perC[x.c] || perC.luce).push([
-        x.nome,
-        x.tempi == null ? '\u2014' : (typeof x.tempi === 'number' ? x.tempi + ' gg lavorativi' : String(x.tempi)),
-        dl,
-        x.sorgenia == null ? 'nessuno' : eur(x.sorgenia),
-        tot
-      ]);
-    }
-    const col = ['Prestazione', 'Tempi', 'Costo distributore', 'Costo Sorgenia', 'Totale cliente'];
-    const bl = [{ tipo: 'info', testo: '<strong>' + (info.iva || '') + '</strong>. ' + (info.preventivi || '') + '.' }];
-    if (perC.luce.length) bl.push({ tipo: 'tabella', titolo: 'Luce', colonne: col, righe: perC.luce });
-    if (perC.gas.length)  bl.push({ tipo: 'tabella', titolo: 'Gas',  colonne: col, righe: perC.gas });
-    bl.push({ tipo: 'nota', testo: 'Dove c\u2019\u00e8 <strong>preventivo</strong> il costo lo stabilisce il distributore caso per caso. L\u2019aumento di potenza si paga <strong>per ogni kW in pi\u00f9</strong>, quindi il totale dipende dai kW richiesti.' });
-    voce(brand, 'costi-prestazioni', 'Costi e tempi delle prestazioni', bl, {
-      sottotitolo: 'Interventi sul contatore: quanto costano e quanto durano.',
-      etichetta: 'Prestazioni',
-      // Solo nomi di operazioni (niente 'costo'/'prezzo' generici): cosi' se queste
-      // keyword combaciano la domanda parla davvero di un intervento sul contatore
-      // e non del prezzo di un'offerta commerciale.
-      keywords: ['prestazione', 'prestazioni']
-        .concat(d.PRESTAZIONI.map(x => String(x.nome || '').toLowerCase().trim()))
-        .filter((v, i, a) => v && a.indexOf(v) === i).join(', ')
-    });
-    console.log('  costi prestazioni: ' + d.PRESTAZIONI.length + ' voci');
-  }
-
-  /* materiali formativi allegati (file serviti dal portale) */
-  for (const a of (ALLEGATI[brand] || [])) {
-    voce(brand, a.id, a.titolo, a.blocchi, { sottotitolo: a.sottotitolo, etichetta: a.etichetta, keywords: a.keywords });
-  }
-  if ((ALLEGATI[brand] || []).length) console.log('  materiali formativi: ' + ALLEGATI[brand].length);
-
-  /* contatti pubblici (i riservati agli AM restano fuori) */
-  let nc = 0;
-  for (const c of (d.RUBRICA || [])) {
-    if (c.riservato) continue;
-    contatti.push({ id: brand + ':' + c.id, brand, area: c.area || '', ufficio: c.ufficio || '',
-      richieste: c.richieste || '', tel: c.tel || '', email: c.email || '',
-      orari: c.orari || '', link: c.link || '', nota: c.nota || '', sort_order: nc });
-    nc++;
-  }
-  if ((d.RUBRICA || []).length) console.log('  contatti: ' + nc + ' pubblici (' + ((d.RUBRICA).length - nc) + ' riservati esclusi)');
-
-  /* tipi di pratica ammessi: ogni brand dichiara le operazioni in un posto diverso.
-     Servono a non proporre al dealer cose che il suo brand non puo' lavorare. */
-  const tp = [];
-  if (brand === 'plenitude') {
-    // tabella "Operazioni ammesse": tengo solo le righe con almeno un si'
-    for (const p of (d.PROCEDURE || [])) for (const b of (p.blocchi || [])) {
-      if (b.tipo !== 'tabella' || !/operazion/i.test(b.titolo || '')) continue;
-      for (const r of (b.righe || [])) {
-        const okL = /\u2705/.test(r[1] || ''), okG = /\u2705/.test(r[2] || '');
-        if (!okL && !okG) continue;
-        tp.push({ nome: String(r[0] || '').replace(/\s*\(.*?\)\s*$/, '').trim(),
-                  nota: (okL && okG) ? '' : (okL ? 'solo luce' : 'solo gas') });
-      }
-    }
-  } else if (brand === 'sorgenia') {
-    // colonne della tabella del credit check residenziale
-    for (const p of (d.PROCEDURE || [])) for (const b of (p.blocchi || [])) {
-      if (b.tipo !== 'tabella' || !/credit check/i.test(b.titolo || '')) continue;
-      for (const c of (b.colonne || []).slice(1)) tp.push({ nome: String(c).trim(), nota: '' });
-    }
-  } else if (brand === 'alperia') {
-    // usi dichiarati dalle offerte + la voltura dalle schede operative
-    const set = new Set();
-    for (const o of (d.OFFERTE || [])) for (const u of (((o.usi || {}).si) || [])) set.add(String(u).trim());
-    if ((d.MODULI_INFO || {}).voltura) set.add('Voltura');
-    for (const n of set) tp.push({ nome: n, nota: '' });
-  }
-  let nt = 0;
-  for (const t of tp) {
-    if (!t.nome) continue;
-    tipiPratica.push({ id: brand + ':tp-' + t.nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40),
-                       brand, nome: t.nome, nota: t.nota, sort_order: nt++ });
-  }
-  console.log('  tipi di pratica: ' + nt + ' -> ' + tp.map(x => x.nome).join(', '));
-
-  /* offerte: ogni brand ha campi diversi -> adattatore dedicato */
-  const ad = {
-    plenitude: (o) => ({ nome: [o.fam, o.variante].filter(Boolean).join(' '), tipo: o.tipo || '', scadenza: o.al || '',
-      durata: o.durataPrezzo || '', prezzo: o.prezzo || '', comm: o.quotaAnno || '' }),
-    sorgenia:  (o) => ({ nome: [o.fam, o.variante].filter(Boolean).join(' '), tipo: o.tipo || '', scadenza: o.al || '',
-      durata: '', prezzo: o.prezzoNetto || o.fee1 || '', comm: o.quotaMese || o.quotaAnno || '' }),
-    alperia:   (o) => ({ nome: o.nome || '', tipo: o.tipo || '', scadenza: o.scadenza || '',
-      durata: '', prezzo: o.prezzo || '', comm: o.commMese || o.comm || '' })
-  }[brand];
-  let no = 0;
-  for (const o of (d.OFFERTE || [])) {
-    const x = ad(o); if (!x.nome) continue;
-    const luce = /luce|ee|elettric/i.test(o.c || '') ? x.prezzo : '';
-    const gas  = /gas/i.test(o.c || '') ? x.prezzo : '';
-    offerte.push({ brand, nome: x.nome, tipo: x.tipo, scadenza: x.scadenza, durata: x.durata,
-      luce: luce || (o.c ? '' : x.prezzo), gas, comm: x.comm,
-      segmento: /bus|pmi|piva/i.test(o.seg || '') ? 'business' : 'domestico', sort_order: no++ });
-  }
-  console.log('  offerte: ' + no);
+  const r = costruisciBrand(brand, d, (m) => console.log('  ' + m));
+  voci.push(...r.voci); contatti.push(...r.contatti); offerte.push(...r.offerte); tipiPratica.push(...r.tipiPratica);
 }
 
 /* ---------- generazione dello script SQL --------------------------------- */
 const L = [];
 L.push('-- ============================================================================');
 L.push('-- IMPORT CONTENUTI PLENITUDE / SORGENIA / ALPERIA');
-L.push('-- Generato da strumenti/sync-brand.js il ' + new Date().toISOString().slice(0, 10) + ' -- non modificare a mano.');
+L.push('-- Generato da strumenti/sync-brand.cjs il ' + new Date().toISOString().slice(0, 10) + ' -- non modificare a mano.');
 L.push('-- Esegui DOPO migrazione-multibrand.sql, nel SQL Editor di Neon.');
 L.push('-- Rimuove i contenuti ACEA e tutto cio che era gia stato importato (origine=sync).');
 L.push('-- Le voci aggiunte a mano dal pannello (origine=manuale) NON vengono toccate.');
@@ -373,3 +100,4 @@ console.log('\n=============================================');
 console.log('voci: ' + voci.length + ' | contatti: ' + contatti.length + ' | offerte: ' + offerte.length + ' | tipi pratica: ' + tipiPratica.length);
 console.log('scritto ' + path.basename(USCITA) + ' (' + (fs.statSync(USCITA).size / 1024).toFixed(0) + ' KB)');
 console.log('caratteri non-ASCII nello script: ' + (nonAscii ? nonAscii.length + ' (ATTENZIONE)' : '0 (ok)'));
+})();

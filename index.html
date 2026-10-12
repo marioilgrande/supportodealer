@@ -302,15 +302,24 @@
   #admin-content.show { display: block; }
   /* --- scelta del brand --- */
   .brand-pick { display: flex; gap: 8px; flex-wrap: wrap; }
-  /* ogni tasto ha gia' i colori del suo brand (data-brand sul tasto stesso) */
-  .brand-chip { flex: 1 1 0; min-width: 0; padding: 11px 6px; border-radius: 10px; cursor: pointer;
-    border: 1.5px solid transparent; background: var(--accent-soft); color: var(--accent-ink);
-    font-family: inherit; font-size: 0.92rem; font-weight: 800; letter-spacing: .01em;
-    box-shadow: inset 0 -3px 0 var(--accent); transition: opacity .15s, border-color .15s; }
+  /* ogni tasto mostra il logo ufficiale del brand; il colore (data-brand sul
+     tasto stesso) segna la linguetta sotto e il bordo quando e' scelto.
+     Fondo sempre bianco: i loghi sono pensati per il chiaro, anche col tema scuro. */
+  .brand-chip { position: relative; flex: 1 1 0; min-width: 0; height: 66px; padding: 10px 8px 14px; border-radius: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid #dde3e8; background: #fff; box-shadow: inset 0 -4px 0 var(--accent);
+    transition: opacity .15s, border-color .15s, transform .15s, box-shadow .15s; }
+  .brand-chip img { display: block; max-width: 100%; max-height: 34px; object-fit: contain; pointer-events: none; }
+  .brand-chip[data-brand="sorgenia"] img { max-height: 42px; }
+  #brand-pick { margin-bottom: 4px; }
   .brand-chip:hover { border-color: var(--accent); }
-  .brand-chip.on { background: var(--hero); color: #fff; box-shadow: inset 0 -3px 0 var(--accent-2), 0 6px 16px -8px var(--accent); }
-  .brand-pick:has(.on) .brand-chip:not(.on) { opacity: .6; }
-  .brand-pick:has(.on) .brand-chip:not(.on):hover { opacity: 1; }
+  .brand-chip.on { border: 2px solid var(--accent); transform: translateY(-1px);
+    box-shadow: inset 0 -4px 0 var(--accent-2), 0 0 0 3px var(--accent-soft), 0 8px 18px -10px var(--accent); }
+  .brand-chip.on::after { content: "\2713"; position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 0.72rem; font-weight: 800; display: grid; place-items: center;
+    box-shadow: 0 0 0 2px var(--paper-raised); }
+  .brand-pick:has(.on) .brand-chip:not(.on) { opacity: .55; filter: grayscale(.4); }
+  .brand-pick:has(.on) .brand-chip:not(.on):hover { opacity: 1; filter: none; }
 
   /* --- schede a blocchi (tabelle, note, elenchi) --- */
   .scheda-tit { font-size: 1.05rem; font-weight: 800; margin: 0 0 2px; }
@@ -449,6 +458,19 @@
   #brand-nome:empty { display: none; }
   .submit-btn { background: var(--hero); }
 
+  /* allineamento con i portali info utili (pannello Contenuti) */
+  .sync-box { border: 1px solid var(--line); border-radius: 10px; background: var(--paper-raised); padding: 12px 14px; margin: 0 0 18px; }
+  .sync-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+  .sync-head .btn-add { flex: none; }
+  .sync-righe { margin-top: 10px; display: grid; gap: 6px; }
+  .sync-riga { display: flex; gap: 8px; align-items: baseline; font-size: 0.84rem; flex-wrap: wrap; }
+  .sync-riga .nome { font-weight: 800; min-width: 78px; }
+  .sync-riga .esito { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 5px; }
+  .sync-riga .esito.ok { background: var(--sev-green-soft); color: var(--sev-green); }
+  .sync-riga .esito.ko { background: var(--sev-red-soft); color: var(--sev-red); }
+  .sync-riga .esito.na { background: var(--line); color: var(--ink-soft); }
+  .sync-riga .det { color: var(--ink-soft); }
+
   /* brand della richiesta nella vista admin */
   .ticket-brand { display: inline-block; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
     padding: 2px 7px; border-radius: 5px; margin: 0 4px 7px 0; background: var(--accent-soft); color: var(--accent-ink);
@@ -490,9 +512,9 @@
           <div class="field">
             <span class="label-text">Di quale brand hai bisogno?</span>
             <div class="brand-pick" id="brand-pick">
-              <button type="button" class="brand-chip" data-brand="plenitude">Plenitude</button>
-              <button type="button" class="brand-chip" data-brand="sorgenia">Sorgenia</button>
-              <button type="button" class="brand-chip" data-brand="alperia">Alperia</button>
+              <button type="button" class="brand-chip" data-brand="plenitude" aria-label="Plenitude"><img src="assets/brand/plenitude.svg" alt="Plenitude"></button>
+              <button type="button" class="brand-chip" data-brand="sorgenia" aria-label="Sorgenia"><img src="assets/brand/sorgenia.png" alt="Sorgenia"></button>
+              <button type="button" class="brand-chip" data-brand="alperia" aria-label="Alperia"><img src="assets/brand/alperia.png" alt="Alperia"></button>
             </div>
             <span class="field-hint warn" id="brand-hint" style="display:none;">Scegli prima il brand, cosi&#768; ti do la risposta giusta.</span>
           </div>
@@ -757,12 +779,21 @@
     </div><!-- /#panel-richieste -->
 
     <div id="panel-contenuti" data-brand="plenitude" hidden>
-      <p class="contenuti-intro">Qui modifichi <b>risposte, offerte e contatti</b> di ogni brand: le modifiche valgono <b>subito</b>, senza pubblicare nulla. Le voci segnate <b>sync</b> arrivano dai portali info-utili (Plenitude, Sorgenia, Alperia) e vengono riscritte al prossimo allineamento: per contenuti tuoi usa <b>+ Aggiungi</b>, quelli restano.</p>
+      <p class="contenuti-intro">Qui modifichi <b>risposte, offerte e contatti</b> di ogni brand: le modifiche valgono <b>subito</b>, senza pubblicare nulla. Le voci segnate <b>sync</b> arrivano dai portali info-utili (Plenitude, Sorgenia, Alperia) e si aggiornano <b>da sole</b> quando cambi quei portali: per contenuti tuoi usa <b>+ Aggiungi</b>, quelli restano.</p>
+
+      <div class="sync-box">
+        <div class="sync-head">
+          <div><b>Allineamento con i portali info utili</b>
+            <span class="field-hint" style="margin-top:2px;">Automatico: controllo a ogni apertura del portale (al massimo ogni 10 minuti) e ogni mattina. Se hai appena aggiornato un portale e non vuoi aspettare, premi <b>Aggiorna ora</b>.</span></div>
+          <button type="button" class="btn-add" id="sync-ora">Aggiorna ora</button>
+        </div>
+        <div id="sync-stato" class="sync-righe"></div>
+      </div>
 
       <div class="brand-pick" id="admin-brand" style="margin-bottom:18px;">
-        <button type="button" class="brand-chip on" data-brand="plenitude">Plenitude</button>
-        <button type="button" class="brand-chip" data-brand="sorgenia">Sorgenia</button>
-        <button type="button" class="brand-chip" data-brand="alperia">Alperia</button>
+        <button type="button" class="brand-chip on" data-brand="plenitude" aria-label="Plenitude"><img src="assets/brand/plenitude.svg" alt="Plenitude"></button>
+        <button type="button" class="brand-chip" data-brand="sorgenia" aria-label="Sorgenia"><img src="assets/brand/sorgenia.png" alt="Sorgenia"></button>
+        <button type="button" class="brand-chip" data-brand="alperia" aria-label="Alperia"><img src="assets/brand/alperia.png" alt="Alperia"></button>
       </div>
 
       <div class="cont-head"><h3>Risposte e procedure</h3><button class="btn-add" id="add-procedura">+ Aggiungi risposta</button></div>
@@ -1009,7 +1040,7 @@
     currentBrand = b.dataset.brand; brandInfo = null;
     document.querySelectorAll('#brand-pick .brand-chip').forEach(x => x.classList.toggle('on', x === b));
     document.getElementById('view-form').dataset.brand = currentBrand;
-    document.getElementById('brand-nome').textContent = b.textContent.trim();
+    document.getElementById('brand-nome').textContent = BRAND_NOMI[currentBrand] || '';
     document.getElementById('brand-hint').style.display = 'none';
   });
   function brandScelto(){
@@ -1438,8 +1469,38 @@
     const p = b.dataset.panel;
     document.getElementById('panel-richieste').hidden = p !== 'richieste';
     document.getElementById('panel-contenuti').hidden = p !== 'contenuti';
-    if (p === 'contenuti') loadContenuti();
+    if (p === 'contenuti') { loadContenuti(); loadSync(); }
   }));
+
+  // ------- Allineamento automatico con i portali info utili -------
+  function quando(iso){
+    if (!iso) return 'mai';
+    const d = new Date(iso);
+    return d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+  }
+  function disegnaSync(stato, risultati){
+    const ris = Object.fromEntries((risultati || []).map(r => [r.brand, r]));
+    document.getElementById('sync-stato').innerHTML = (stato || []).map(s => {
+      const ok = s.esito === 'aggiornato' || s.esito === 'invariato';
+      const cls = ok ? 'ok' : (s.esito === 'errore' ? 'ko' : 'na');
+      const etich = s.esito === 'errore' ? 'non riuscito' : (s.esito === 'mai' ? 'mai fatto' : (ris[s.brand] && ris[s.brand].esito === 'aggiornato' ? 'aggiornato ora' : 'allineato'));
+      const det = s.esito === 'errore' ? s.dettaglio : 'ultimo cambiamento ' + quando(s.aggiornato_il) + ' · controllato ' + quando(s.controllato_il);
+      return '<div class="sync-riga" data-brand="' + s.brand + '"><span class="nome" style="color:var(--accent)">' + esc(s.nome) + '</span>' +
+             '<span class="esito ' + cls + '">' + etich + '</span><span class="det">' + esc(det) + '</span></div>';
+    }).join('');
+  }
+  async function loadSync(){
+    try { const r = await (await authFetch('/api/sync?stato=1')).json(); if (r.ok) disegnaSync(r.stato); } catch {}
+  }
+  document.getElementById('sync-ora').addEventListener('click', async (e) => {
+    const b = e.currentTarget; b.disabled = true; b.textContent = 'Aggiorno…';
+    try {
+      const r = await (await authFetch('/api/sync', { method: 'POST' })).json();
+      if (r.ok) { disegnaSync(r.stato, r.risultati); loadContenuti(); }
+      else alert('Allineamento non riuscito: ' + (r.error || 'errore'));
+    } catch { alert('Allineamento non riuscito: controlla la connessione.'); }
+    b.disabled = false; b.textContent = 'Aggiorna ora';
+  });
 
   async function apiContenuti(method, data){
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -1677,6 +1738,9 @@
     await aggiungi('offerta', { nome: 'Nuova offerta', tipoOfferta: 'Variabile', segmento: 'domestico' });
     e.currentTarget.disabled = false;
   });
+  // Allineamento automatico con i portali info utili: parte in background,
+  // al massimo ogni 10 minuti (lo decide il server). Il dealer non aspetta nulla.
+  setTimeout(() => { fetch('/api/sync').catch(() => {}); }, 1500);
 </script>
 
 </html>
