@@ -1013,8 +1013,11 @@
   const ICONA_FONTE = { scheda: '📄', offerta: '🏷️', contatto: '📞', info: 'ℹ️' };
   function renderRisposta(r){
     const nome = BRAND_NOMI[r.brand || currentBrand] || '';
-    document.getElementById('c-risposta-tag').textContent = 'Risposta · fonti ' + nome;
-    document.getElementById('c-risposta-testo').innerHTML = testoRicco(r.testo);
+    // Senza testo (AI non disponibile o testo scartato dal controllo): restano le
+    // sezioni ufficiali piu' pertinenti, e la prima scheda si apre da sola.
+    document.getElementById('c-risposta-tag').textContent = (r.testo ? 'Risposta · fonti ' : 'Informazioni ufficiali ') + nome;
+    document.getElementById('c-risposta-testo').innerHTML = r.testo ? testoRicco(r.testo)
+      : '<p>Ecco le informazioni ufficiali <b>' + esc(nome) + '</b> più vicine alla tua domanda.</p>';
     document.querySelectorAll('#c-risposta .risposta-offerte').forEach(x => x.remove());
     const schede = r.schede || [];
     const fonti = (r.fonti || []).map(f => {
@@ -1039,6 +1042,7 @@
     }
     showGreeting('Ecco la risposta 👇');
     document.getElementById('c-risposta').classList.add('show');
+    if (!r.testo && schede.length) renderScheda(schede[0], true);
     document.getElementById('c-feedback').classList.add('show');
   }
   function renderNonTrovato(r){
@@ -1364,8 +1368,8 @@
       illu: 'Poi metti il nome del tuo <b>negozio</b> e racconta cosa ti serve <b>con parole tue</b>: niente moduli da compilare.'
     },
     {
-      titolo: 'Ho già la risposta al 90% di quello che ti serve',
-      testo: 'Procedure passo-passo, <b>offerte</b> (prezzi, scadenze, commercializzazione), <b>costi e tempi</b> delle pratiche, moduli e contatti. Il restante 10% &mdash; dove serve mettere mano &mdash; lo chiude <b>Mario</b>: così arrivi al <b>100%</b>.',
+      titolo: 'Rispondo con le informazioni ufficiali del brand',
+      testo: 'Scrivi la domanda con parole tue: cerco la risposta nel <b>portale info utili</b> del brand (procedure, <b>offerte in vendita</b> con tutte le condizioni, <b>costi e tempi</b> delle pratiche, contatti) e ti scrivo la <b>risposta precisa</b>. Sotto vedi sempre <b>da dove l&rsquo;ho presa</b>: tocca la scheda per leggerla intera. Se l&rsquo;informazione non c&rsquo;è, te lo dico e ti do i contatti giusti; dove serve mettere mano, ci pensa <b>Mario</b>.',
       illu: '<span class="ex">«come faccio una voltura?»</span><span class="ex">«quanto costa un aumento di potenza?»</span><span class="ex">«prezzi e scadenze delle offerte»</span><span class="ex">«a chi mi rivolgo se la pratica va in KO?»</span>'
     },
     {

@@ -1,5 +1,6 @@
 import { verifyRequest, json } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
+import { chiaveDomanda } from '../lib/fonti.js';
 
 export const config = { runtime: 'edge' };
 
@@ -36,6 +37,16 @@ export default async function handler(request) {
       const id = Number(body.id);
       if (!id) return json({ error: 'id mancante' }, 400);
       await sql`UPDATE ticket SET risposta_ok = ${body.rispostaOk === true}, updated_at = NOW() WHERE id = ${id}`;
+      // Memoria delle risposte: "Risposta OK" la approva, "Da migliorare" la cancella
+      // (la prossima volta che qualcuno fa la stessa domanda si rigenera).
+      try {
+        const [t] = await sql`SELECT brand, messaggio FROM ticket WHERE id = ${id}`;
+        const chiave = t && t.brand ? chiaveDomanda(t.messaggio) : '';
+        if (chiave) {
+          if (body.rispostaOk === true) await sql`UPDATE risposta_cache SET approvata = TRUE WHERE brand = ${t.brand} AND chiave = ${chiave}`;
+          else await sql`DELETE FROM risposta_cache WHERE brand = ${t.brand} AND chiave = ${chiave}`;
+        }
+      } catch { /* memoria non ancora creata */ }
       return json({ ok: true });
     }
 

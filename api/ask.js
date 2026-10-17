@@ -2,7 +2,7 @@ import { json as jsonBase } from '../lib/auth.js';
 const json = (d, st) => jsonBase(PROVA && DIAG ? Object.assign({ diag: DIAG }, d) : d, st);
 import { sql, codiceTicket } from '../lib/db.js';
 import { interpret, rispondiDaFonti, ultimaDiagnosi } from '../lib/gemini.js';
-import { getFonti, numeriVerificati, testoPertinente } from '../lib/fonti.js';
+import { getFonti, numeriVerificati, testoPertinente, sezioniPertinenti, chiaveDomanda, firma } from '../lib/fonti.js';
 import {
   BRANDS, isBrand, getProcedure, getProceduraById, getContatti, getOfferte,
   filtraOfferte, matchProcedure, rispostaFissa
@@ -45,8 +45,9 @@ function ordinaContatti(lista, messaggio) {
 // In anteprima (mai in produzione) le domande di prova non creano richieste nello storico.
 let PROVA = false;
 let DIAG = null;   // solo in prova: perche' si e' usata o scartata la risposta dalle fonti
-// Risposte dalle fonti: attive in anteprima, in produzione dopo il collaudo.
-const RISPOSTE_FONTI = process.env.VERCEL_ENV !== 'production';
+// Risposte dalle fonti (memoria -> AI sugli estratti -> sezioni ufficiali). Il
+// flusso classico resta come ultima riserva.
+const RISPOSTE_FONTI = true;
 
 async function salvaTicket(brand, negozio, categoria, colore, messaggio, rispostaAi) {
   if (PROVA) return { id: 0, codice: 'PROVA' };
@@ -60,32 +61,106 @@ async function salvaTicket(brand, negozio, categoria, colore, messaggio, rispost
   return { id, codice };
 }
 
+/* ============================================================================
+   MEMORIA DELLE RISPOSTE
+   Una domanda gia' fatta (stesse parole importanti, in qualsiasi ordine) per lo
+   stesso brand riceve la risposta gia' verificata, senza consumare l'AI.
+   La risposta salvata vale finche' le sezioni citate restano identiche: se il
+   portale info-utili cambia proprio quelle, si rigenera da sola.
+   Le risposte segnate "Risposta OK" in Vista Admin diventano approvate.
+   ========================================================================== */
+let memoriaPronta = false;
+async function preparaMemoria() {
+  if (memoriaPronta) return;
+  await sql`CREATE TABLE IF NOT EXISTS risposta_cache (
+    brand     TEXT NOT NULL,
+    chiave    TEXT NOT NULL,
+    payload   JSONB NOT NULL,
+    firme     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    versione  TEXT NOT NULL DEFAULT '',
+    approvata BOOLEAN NOT NULL DEFAULT FALSE,
+    usi       INTEGER NOT NULL DEFAULT 0,
+    creato_il TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (brand, chiave)
+  )`;
+  memoriaPronta = true;
+}
+async function cercaInMemoria(brand, chiave, fonti) {
+  if (!chiave) return null;
+  await preparaMemoria();
+  const [r] = await sql`SELECT payload, firme, versione FROM risposta_cache WHERE brand = ${brand} AND chiave = ${chiave}`;
+  if (!r) return null;
+  const firme = r.firme || {};
+  const ids = Object.keys(firme);
+  const valida = ids.length
+    ? ids.every(id => fonti.perId.has(id) && firma(fonti.perId.get(id).testo) === firme[id])
+    : r.versione === fonti.versione;               // domande di chiarimento: tutto il portale
+  if (!valida) return null;
+  await sql`UPDATE risposta_cache SET usi = usi + 1 WHERE brand = ${brand} AND chiave = ${chiave}`;
+  return r.payload;
+}
+async function salvaInMemoria(brand, chiave, payload, firme, versione) {
+  if (!chiave) return;
+  await preparaMemoria();
+  await sql`INSERT INTO risposta_cache (brand, chiave, payload, firme, versione)
+            VALUES (${brand}, ${chiave}, ${JSON.stringify(payload)}::jsonb, ${JSON.stringify(firme || {})}::jsonb, ${versione || ''})
+            ON CONFLICT (brand, chiave) DO UPDATE SET payload = EXCLUDED.payload, firme = EXCLUDED.firme,
+              versione = EXCLUDED.versione, approvata = FALSE, usi = 0, creato_il = now()`;
+}
+
+/* Corpo della risposta con le sezioni citate: schede apribili, contatti, offerte. */
+async function corpoConFonti(brand, citate, testo) {
+  const [procedure, contattiTutti] = await Promise.all([getProcedure(brand), getContatti(brand)]);
+  const schede = citate.filter(s => s.tipo === 'scheda')
+    .map(s => procedure.find(p => p.id === s.id)).filter(Boolean).slice(0, 3);
+  const idContatti = new Set(citate.filter(s => s.tipo === 'contatto').map(s => s.id.slice('contatto:'.length)));
+  const nomiCitati = new Set(citate.filter(s => s.nome).map(s => s.nome.toLowerCase()));
+  const visti = new Set();
+  const offerte = nomiCitati.size ? (await getOfferte(brand)).filter(o => {
+    const k = [o.nome, o.luce, o.gas, o.comm].join('|');
+    if (!nomiCitati.has(String(o.nome || '').toLowerCase()) || visti.has(k)) return false;
+    visti.add(k); return true;
+  }).slice(0, 8) : [];
+  return {
+    brand, type: 'risposta', testo,
+    fonti: citate.map(s => ({ id: s.id, tipo: s.tipo, titolo: s.titolo })),
+    schede: schede.map(p => ({ id: p.id, titolo: p.label, sottotitolo: p.sottotitolo, etichetta: p.etichetta,
+                               blocchi: p.type === 'blocchi' ? p.blocchi : [{ tipo: 'info', testo: p.answer || '' }] })),
+    contatti: contattiTutti.filter(c => idContatti.has(String(c.id))),
+    offerte
+  };
+}
+function classifica(citate, contatti) {
+  const conOfferte = citate.some(s => s.tipo === 'offerta');
+  return contatti ? { categoria: 'Chi contattare', colore: 'rosso' }
+       : conOfferte ? { categoria: 'Info offerte', colore: 'verde' }
+       : { categoria: 'Procedura', colore: 'giallo' };
+}
+
 /* Risposta scritta dall'AI leggendo le fonti del brand (lib/fonti.js).
-   Ritorna la Response da inviare, { intent } per proseguire col flusso classico,
-   oppure null se la risposta non supera i controlli (si usa il flusso classico). */
+   Ritorna { corpo, ticket, memoria } da inviare, { intent } per proseguire col
+   flusso classico, oppure null se la risposta non supera i controlli. */
 async function daFonti(ai, fonti, ctx) {
-  const { brand, negozio, messaggio, nomeBrand } = ctx;
+  const { brand, messaggio, nomeBrand } = ctx;
 
   if (ai.esito === 'avanzamento') return { intent: 'avanzamento' };
 
   if (ai.esito === 'chiarimento') {
     const opzioni = (ai.opzioni || []).map(x => String(x).trim()).filter(Boolean).slice(0, 4);
     if (opzioni.length >= 2 && ai.domanda) {
-      return json({ ticketId: null, type: 'chiarimento', brand, colore: 'giallo', domanda: String(ai.domanda), opzioni });
+      return { corpo: { brand, colore: 'giallo', type: 'chiarimento', domanda: String(ai.domanda), opzioni },
+               memoria: { firme: {}, versione: fonti.versione } };
     }
     return null;
   }
-
-  const contattiTutti = await getContatti(brand);
 
   if (ai.esito === 'non_trovato') {
     // L'AI ha letto solo gli estratti piu' pertinenti: se le parole chiave di una
     // scheda agganciano la domanda, meglio mostrare quella col metodo classico.
     if ((await matchProcedure(messaggio, brand)).length) return null;
     const testo = String(ai.risposta || '').trim() || ('Nelle informazioni ' + nomeBrand + ' non trovo questo dato.');
-    const t = await salvaTicket(brand, negozio, 'Non trovato nelle fonti', 'rosso', messaggio, testo);
-    return json({ ticketId: t.id, codice: t.codice, brand, colore: 'rosso', type: 'non-trovato',
-                  testo, contatti: ordinaContatti(contattiTutti, messaggio) });
+    return { corpo: { brand, colore: 'rosso', type: 'non-trovato', testo, contatti: ordinaContatti(await getContatti(brand), messaggio) },
+             ticket: { categoria: 'Non trovato nelle fonti', colore: 'rosso', rispostaAi: testo } };
   }
 
   // esito risposta / contatti: le fonti citate devono esistere davvero
@@ -93,41 +168,54 @@ async function daFonti(ai, fonti, ctx) {
   if (!ids.length) return null;
   const citate = ids.map(id => fonti.perId.get(id));
   const testo = String(ai.risposta || '').trim();
-  const procedure = await getProcedure(brand);
-  const schede = citate.filter(s => s.tipo === 'scheda')
-    .map(s => procedure.find(p => p.id === s.id)).filter(Boolean).slice(0, 3);
 
   // Anti-invenzione: un numero che non sta nelle fonti fa scartare il testo scritto
-  // dall'AI. Resta la scheda ufficiale citata, se c'e'.
+  // dall'AI. Restano le sezioni ufficiali citate, da leggere direttamente.
   const verifica = numeriVerificati(testo, fonti.testo);
   if (DIAG) DIAG.numeriMancanti = verifica.mancanti;
-  if (!testo || !verifica.ok) {
-    const p = schede.find(x => x.type === 'blocchi');
-    if (!p) return null;
-    const t = await salvaTicket(brand, negozio, 'Procedura', 'giallo', messaggio, p.label);
-    return json({ ticketId: t.id, codice: t.codice, brand, colore: 'giallo', type: 'scheda',
-                  scheda: { titolo: p.label, sottotitolo: p.sottotitolo, etichetta: p.etichetta, blocchi: p.blocchi } });
+  const corpo = await corpoConFonti(brand, citate, testo && verifica.ok ? testo : '');
+  const cl = classifica(citate, ai.esito === 'contatti');
+  corpo.colore = cl.colore;
+  const firme = Object.fromEntries(citate.map(s => [s.id, firma(s.testo)]));
+  return {
+    corpo,
+    ticket: { ...cl, rispostaAi: ((corpo.testo || 'Sezioni: ') + '\n[fonti: ' + citate.map(s => s.titolo).join(' | ') + ']').slice(0, 4000) },
+    memoria: corpo.testo ? { firme, versione: fonti.versione } : null
+  };
+}
+
+/* Quando l'AI non e' disponibile (quota finita, servizio lento): niente testo
+   scritto, ma le sezioni ufficiali piu' pertinenti alla domanda. */
+async function daEstratti(fonti, ctx) {
+  const { brand, messaggio } = ctx;
+  const classificate = sezioniPertinenti(fonti, messaggio);
+  if (!classificate.length || classificate[0].p < 4) return null;
+  const vuoleContatto = /numer|telefon|chiam|mail|contatt|rivolg|assistenz|help|ufficio/i.test(messaggio);
+  // solo le sezioni forti: almeno meta' del punteggio della migliore
+  // (fino a 5 se sono offerte: chi chiede le offerte vuole vederle tutte)
+  let citate = classificate.filter(x => x.p >= classificate[0].p / 2).slice(0, classificate[0].s.tipo === 'offerta' ? 5 : 3).map(x => x.s);
+  if (vuoleContatto) {
+    const c = classificate.filter(x => x.s.tipo === 'contatto').slice(0, 3).map(x => x.s);
+    if (c.length) citate = c;
   }
+  const corpo = await corpoConFonti(brand, citate, '');
+  const cl = classifica(citate, vuoleContatto && citate[0].tipo === 'contatto');
+  corpo.colore = cl.colore;
+  return { corpo, ticket: { ...cl, rispostaAi: 'Sezioni piu’ pertinenti: ' + citate.map(s => s.titolo).join(' | ') } };
+}
 
-  const idContatti = new Set(citate.filter(s => s.tipo === 'contatto').map(s => s.id.slice('contatto:'.length)));
-  const contatti = contattiTutti.filter(c => idContatti.has(String(c.id)));
-  const conOfferte = citate.some(s => s.tipo === 'offerta');
-  // le offerte citate si mostrano anche come schede offerta sotto la risposta
-  const nomiCitati = new Set(citate.filter(s => s.nome).map(s => s.nome.toLowerCase()));
-  const offerte = nomiCitati.size ? (await getOfferte(brand)).filter(o => nomiCitati.has(String(o.nome || '').toLowerCase())).slice(0, 8) : [];
-  const categoria = ai.esito === 'contatti' ? 'Chi contattare' : (conOfferte ? 'Info offerte' : 'Procedura');
-  const colore    = ai.esito === 'contatti' ? 'rosso' : (conOfferte ? 'verde' : 'giallo');
-
-  const t = await salvaTicket(brand, negozio, categoria, colore, messaggio,
-    (testo + '\n[fonti: ' + citate.map(s => s.titolo).join(' | ') + ']').slice(0, 4000));
-  return json({
-    ticketId: t.id, codice: t.codice, brand, colore, type: 'risposta',
-    testo,
-    fonti: citate.map(s => ({ id: s.id, tipo: s.tipo, titolo: s.titolo })),
-    schede: schede.map(p => ({ id: p.id, titolo: p.label, sottotitolo: p.sottotitolo, etichetta: p.etichetta,
-                               blocchi: p.type === 'blocchi' ? p.blocchi : [{ tipo: 'info', testo: p.answer || '' }] })),
-    contatti, offerte
-  });
+async function invia(out, ctx, chiave) {
+  const { brand, negozio, messaggio } = ctx;
+  let extra = { ticketId: null };
+  if (out.ticket) {
+    const t = await salvaTicket(brand, negozio, out.ticket.categoria, out.ticket.colore, messaggio, out.ticket.rispostaAi);
+    extra = { ticketId: t.id, codice: t.codice };
+  }
+  if (out.memoria) {
+    try { await salvaInMemoria(brand, chiave, { corpo: out.corpo, ticket: out.ticket || null }, out.memoria.firme, out.memoria.versione); }
+    catch { /* la memoria e' un di piu' */ }
+  }
+  return json(Object.assign({}, out.corpo, extra));
 }
 
 export default async function handler(request) {
@@ -149,6 +237,7 @@ export default async function handler(request) {
   // 1) Interpreta la richiesta (sempre dentro il brand scelto).
   const forcedId = (body.proceduraId || '').toString().slice(0, 80);
   let intp;
+  let aiAssente = false;   // l'AI ha appena fallito: inutile richiamarla nel flusso classico
   if (forcedId) {
     intp = { intent: 'portale', procedureId: forcedId, offerFilter: null };
   } else {
@@ -158,20 +247,35 @@ export default async function handler(request) {
     if (RISPOSTE_FONTI) try {
       const fonti = await getFonti(brand);
       if (fonti.sezioni.length) {
+        const ctx = { brand, negozio, messaggio, nomeBrand };
+        const chiave = chiaveDomanda(messaggio);
+        // 1) gia' risposta? (zero AI)
+        let salvata = null;
+        try { salvata = await cercaInMemoria(brand, chiave, fonti); } catch { /* si va avanti */ }
+        if (salvata) {
+          if (DIAG === null && PROVA) DIAG = { memoria: true };
+          return await invia({ corpo: Object.assign({}, salvata.corpo, { memoria: true }), ticket: salvata.ticket }, ctx, chiave);
+        }
+        // 2) risposta scritta dall'AI sugli estratti pertinenti
         const ai = await rispondiDaFonti(messaggio, testoPertinente(fonti, messaggio, 22000), nomeBrand);
         DIAG = ai ? { ai: ai._diag, esito: ai.esito, fonti: ai.fonti, risposta: ai.risposta } : { ai: ultimaDiagnosi };
         if (ai) {
-          const r = await daFonti(ai, fonti, { brand, negozio, messaggio, nomeBrand });
-          if (r instanceof Response) return r;
+          const r = await daFonti(ai, fonti, ctx);
+          if (r && r.corpo) return await invia(r, ctx, chiave);
           if (r && r.intent) intp = { intent: r.intent, procedureId: null, offerFilter: null };
+        } else {
+          // 3) AI non disponibile: le sezioni ufficiali piu' pertinenti
+          aiAssente = true;
+          const r = await daEstratti(fonti, ctx);
+          if (r) return await invia(r, ctx, null);
         }
       }
-    } catch (e) { /* flusso classico */ }
+    } catch (e) { if (DIAG) DIAG.errore = String(e && e.message || e); }
   }
   if (!intp) {
     const procedure = await getProcedure(brand);
     intp = null;
-    try { intp = await interpret(messaggio, procedure, nomeBrand); } catch { /* fallback */ }
+    if (!aiAssente) try { intp = await interpret(messaggio, procedure, nomeBrand); } catch { /* fallback */ }
     if (!intp || !intp.intent) intp = await localInterpret(messaggio, brand);
 
     // Le parole chiave hanno la meglio: l'AI non le vede (riceve solo titolo+id).
