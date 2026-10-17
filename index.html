@@ -477,6 +477,7 @@
   .risposta-testo ul { margin: 2px 0 8px; padding-left: 20px; }
   .risposta-testo li { margin-bottom: 3px; }
   .risposta-testo b { color: var(--accent-ink); }
+  .risposta-offerte { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
   .risposta-fonti { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); display: flex; flex-wrap: wrap; gap: 6px; }
   .fonti-tit { width: 100%; margin: 0 0 2px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
   .fonte-chip { display: inline-flex; align-items: center; gap: 5px; font-family: inherit; font-size: 0.78rem; font-weight: 600; line-height: 1.3;
@@ -1014,6 +1015,7 @@
     const nome = BRAND_NOMI[r.brand || currentBrand] || '';
     document.getElementById('c-risposta-tag').textContent = 'Risposta · fonti ' + nome;
     document.getElementById('c-risposta-testo').innerHTML = testoRicco(r.testo);
+    document.querySelectorAll('#c-risposta .risposta-offerte').forEach(x => x.remove());
     const schede = r.schede || [];
     const fonti = (r.fonti || []).map(f => {
       const i = schede.findIndex(s => s.id === f.id);
@@ -1028,6 +1030,13 @@
       document.getElementById('c-scheda').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
     if ((r.contatti || []).length) renderContatti(r.contatti, false);
+    if ((r.offerte || []).length){
+      box.insertAdjacentHTML('beforebegin', '<div class="promo-list risposta-offerte">' + r.offerte.map(o =>
+        '<div class="promo-item"><div class="promo-name">' + esc(o.nome) + '</div>' +
+        '<div class="promo-meta">' + [o.tipo, o.segmento, o.scadenza && 'vendibile fino al ' + o.scadenza].filter(Boolean).map(esc).join(' · ') + '</div>' +
+        '<div class="promo-prices">' + [o.luce && '<span><b>Luce:</b> ' + esc(o.luce) + '</span>', o.gas && '<span><b>Gas:</b> ' + esc(o.gas) + '</span>',
+          o.comm && '<span><b>Commercializzazione:</b> ' + esc(o.comm) + '</span>'].filter(Boolean).join('') + '</div></div>').join('') + '</div>');
+    }
     showGreeting('Ecco la risposta 👇');
     document.getElementById('c-risposta').classList.add('show');
     document.getElementById('c-feedback').classList.add('show');
@@ -1037,6 +1046,7 @@
     document.getElementById('c-risposta-tag').textContent = 'Non presente nelle informazioni ' + nome;
     document.getElementById('c-risposta-testo').innerHTML = testoRicco(r.testo);
     document.getElementById('c-risposta-fonti').innerHTML = '';
+    document.querySelectorAll('#c-risposta .risposta-offerte').forEach(x => x.remove());
     renderContatti(r.contatti, true);
     showGreeting('Su questo non ho una risposta ufficiale: ti giro i riferimenti giusti 👇');
     document.getElementById('c-risposta').classList.add('show');

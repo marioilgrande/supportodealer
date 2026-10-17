@@ -1,9 +1,10 @@
-import { json } from '../lib/auth.js';
+import { json as jsonBase } from '../lib/auth.js';
+const json = (d, st) => jsonBase(PROVA && DIAG ? Object.assign({ diag: DIAG }, d) : d, st);
 import { sql, codiceTicket } from '../lib/db.js';
-import { interpret, rispondiDaFonti } from '../lib/gemini.js';
-import { getFonti, numeriVerificati } from '../lib/fonti.js';
+import { interpret, rispondiDaFonti, ultimaDiagnosi } from '../lib/gemini.js';
+import { getFonti, numeriVerificati, testoPertinente } from '../lib/fonti.js';
 import {
-  BRANDS, isBrand, getProcedure, getProceduraById, getContatti,
+  BRANDS, isBrand, getProcedure, getProceduraById, getContatti, getOfferte,
   filtraOfferte, matchProcedure, rispostaFissa
 } from '../lib/kb.js';
 
@@ -43,6 +44,7 @@ function ordinaContatti(lista, messaggio) {
 
 // In anteprima (mai in produzione) le domande di prova non creano richieste nello storico.
 let PROVA = false;
+let DIAG = null;   // solo in prova: perche' si e' usata o scartata la risposta dalle fonti
 // Risposte dalle fonti: attive in anteprima, in produzione dopo il collaudo.
 const RISPOSTE_FONTI = process.env.VERCEL_ENV !== 'production';
 
@@ -77,6 +79,9 @@ async function daFonti(ai, fonti, ctx) {
   const contattiTutti = await getContatti(brand);
 
   if (ai.esito === 'non_trovato') {
+    // L'AI ha letto solo gli estratti piu' pertinenti: se le parole chiave di una
+    // scheda agganciano la domanda, meglio mostrare quella col metodo classico.
+    if ((await matchProcedure(messaggio, brand)).length) return null;
     const testo = String(ai.risposta || '').trim() || ('Nelle informazioni ' + nomeBrand + ' non trovo questo dato.');
     const t = await salvaTicket(brand, negozio, 'Non trovato nelle fonti', 'rosso', messaggio, testo);
     return json({ ticketId: t.id, codice: t.codice, brand, colore: 'rosso', type: 'non-trovato',
@@ -94,7 +99,9 @@ async function daFonti(ai, fonti, ctx) {
 
   // Anti-invenzione: un numero che non sta nelle fonti fa scartare il testo scritto
   // dall'AI. Resta la scheda ufficiale citata, se c'e'.
-  if (!testo || !numeriVerificati(testo, fonti.testo).ok) {
+  const verifica = numeriVerificati(testo, fonti.testo);
+  if (DIAG) DIAG.numeriMancanti = verifica.mancanti;
+  if (!testo || !verifica.ok) {
     const p = schede.find(x => x.type === 'blocchi');
     if (!p) return null;
     const t = await salvaTicket(brand, negozio, 'Procedura', 'giallo', messaggio, p.label);
@@ -105,6 +112,9 @@ async function daFonti(ai, fonti, ctx) {
   const idContatti = new Set(citate.filter(s => s.tipo === 'contatto').map(s => s.id.slice('contatto:'.length)));
   const contatti = contattiTutti.filter(c => idContatti.has(String(c.id)));
   const conOfferte = citate.some(s => s.tipo === 'offerta');
+  // le offerte citate si mostrano anche come schede offerta sotto la risposta
+  const nomiCitati = new Set(citate.filter(s => s.nome).map(s => s.nome.toLowerCase()));
+  const offerte = nomiCitati.size ? (await getOfferte(brand)).filter(o => nomiCitati.has(String(o.nome || '').toLowerCase())).slice(0, 8) : [];
   const categoria = ai.esito === 'contatti' ? 'Chi contattare' : (conOfferte ? 'Info offerte' : 'Procedura');
   const colore    = ai.esito === 'contatti' ? 'rosso' : (conOfferte ? 'verde' : 'giallo');
 
@@ -116,7 +126,7 @@ async function daFonti(ai, fonti, ctx) {
     fonti: citate.map(s => ({ id: s.id, tipo: s.tipo, titolo: s.titolo })),
     schede: schede.map(p => ({ id: p.id, titolo: p.label, sottotitolo: p.sottotitolo, etichetta: p.etichetta,
                                blocchi: p.type === 'blocchi' ? p.blocchi : [{ tipo: 'info', testo: p.answer || '' }] })),
-    contatti
+    contatti, offerte
   });
 }
 
@@ -134,6 +144,7 @@ export default async function handler(request) {
 
   const nomeBrand = (BRANDS.find(b => b.id === brand) || {}).nome || brand;
   PROVA = process.env.VERCEL_ENV !== 'production' && body.prova === true;
+  DIAG = null;
 
   // 1) Interpreta la richiesta (sempre dentro il brand scelto).
   const forcedId = (body.proceduraId || '').toString().slice(0, 80);
@@ -147,7 +158,8 @@ export default async function handler(request) {
     if (RISPOSTE_FONTI) try {
       const fonti = await getFonti(brand);
       if (fonti.sezioni.length) {
-        const ai = await rispondiDaFonti(messaggio, fonti.testo, nomeBrand);
+        const ai = await rispondiDaFonti(messaggio, testoPertinente(fonti, messaggio, 22000), nomeBrand);
+        DIAG = ai ? { ai: ai._diag, esito: ai.esito, fonti: ai.fonti, risposta: ai.risposta } : { ai: ultimaDiagnosi };
         if (ai) {
           const r = await daFonti(ai, fonti, { brand, negozio, messaggio, nomeBrand });
           if (r instanceof Response) return r;
