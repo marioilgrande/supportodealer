@@ -471,6 +471,20 @@
   .sync-riga .esito.na { background: var(--line); color: var(--ink-soft); }
   .sync-riga .det { color: var(--ink-soft); }
 
+  /* risposta scritta dalle fonti */
+  .risposta-testo { font-size: 0.93rem; line-height: 1.55; }
+  .risposta-testo p { margin: 0 0 6px; }
+  .risposta-testo ul { margin: 2px 0 8px; padding-left: 20px; }
+  .risposta-testo li { margin-bottom: 3px; }
+  .risposta-testo b { color: var(--accent-ink); }
+  .risposta-fonti { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); display: flex; flex-wrap: wrap; gap: 6px; }
+  .fonti-tit { width: 100%; margin: 0 0 2px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
+  .fonte-chip { display: inline-flex; align-items: center; gap: 5px; font-family: inherit; font-size: 0.78rem; font-weight: 600; line-height: 1.3;
+    padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink); text-align: left; }
+  .fonte-chip.apri { cursor: pointer; border-color: var(--accent); }
+  .fonte-chip.apri span { color: var(--accent); font-weight: 800; }
+  .fonte-chip.apri:hover { background: var(--accent-soft); }
+
   /* brand della richiesta nella vista admin */
   .ticket-brand { display: inline-block; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
     padding: 2px 7px; border-radius: 5px; margin: 0 4px 7px 0; background: var(--accent-soft); color: var(--accent-ink);
@@ -549,6 +563,13 @@
           <!-- saluto dell'assistente (variabile) -->
           <div class="assistant-line" id="c-greeting"></div>
 
+          <!-- risposta scritta leggendo le fonti del brand, con le fonti citate -->
+          <div class="ai-answer" id="c-risposta">
+            <span class="tag" id="c-risposta-tag">Risposta</span>
+            <div id="c-risposta-testo" class="risposta-testo"></div>
+            <div id="c-risposta-fonti" class="risposta-fonti"></div>
+          </div>
+
           <!-- risposta dal cervello (procedura o offerte) -->
           <div class="ai-answer" id="c-answer">
             <span class="tag" id="c-answer-tag">Risposta</span>
@@ -589,7 +610,7 @@
           <!-- quale argomento? (il messaggio tocca più procedure) -->
           <div id="c-argomento" class="clarify-block">
             <span class="tag">Assistente</span>
-            <p class="clarify-q">La tua richiesta tocca più argomenti: su quale ti do una mano?</p>
+            <p class="clarify-q" id="c-argomento-q">La tua richiesta tocca più argomenti: su quale ti do una mano?</p>
             <div class="clarify-chips" id="c-argomento-chips"></div>
           </div>
 
@@ -867,7 +888,7 @@
 
   function showGreeting(msg){ const el = document.getElementById('c-greeting'); el.innerHTML = msg; el.classList.add('show'); }
   function hidePanels(){
-    ['c-greeting','c-argomento','c-answer','c-scheda','c-contatti','c-bolletta','c-clarify','c-portale','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-contatti','c-final-simone']
+    ['c-greeting','c-argomento','c-risposta','c-answer','c-scheda','c-contatti','c-bolletta','c-clarify','c-portale','c-help-type','c-tipo-pratica','c-feedback','c-escalate','c-escalate-altro','c-final-ok','c-final-contatti','c-final-simone']
       .forEach(id => document.getElementById(id).classList.remove('show'));
   }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -976,14 +997,79 @@
     else { v.addEventListener('loadedmetadata', vai, { once: true }); v.load(); }
   });
 
-  function renderScheda(sc){
+  // Testo della risposta: solo **grassetto** ed elenchi "- ", tutto il resto escapato.
+  function testoRicco(t){
+    let html = '', lista = false;
+    for (const riga of esc(t || '').split(/\n+/)){
+      const m = /^\s*[-•*]\s+(.*)$/.exec(riga);
+      if (m){ if (!lista){ html += '<ul>'; lista = true; } html += '<li>' + m[1] + '</li>'; continue; }
+      if (lista){ html += '</ul>'; lista = false; }
+      if (riga.trim()) html += '<p>' + riga + '</p>';
+    }
+    if (lista) html += '</ul>';
+    return html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  }
+  const ICONA_FONTE = { scheda: '📄', offerta: '🏷️', contatto: '📞', info: 'ℹ️' };
+  function renderRisposta(r){
+    const nome = BRAND_NOMI[r.brand || currentBrand] || '';
+    document.getElementById('c-risposta-tag').textContent = 'Risposta · fonti ' + nome;
+    document.getElementById('c-risposta-testo').innerHTML = testoRicco(r.testo);
+    const schede = r.schede || [];
+    const fonti = (r.fonti || []).map(f => {
+      const i = schede.findIndex(s => s.id === f.id);
+      const lab = (ICONA_FONTE[f.tipo] || '•') + ' ' + esc(f.titolo);
+      return i >= 0 ? '<button type="button" class="fonte-chip apri" data-i="' + i + '">' + lab + ' <span>apri</span></button>'
+                    : '<span class="fonte-chip">' + lab + '</span>';
+    }).join('');
+    const box = document.getElementById('c-risposta-fonti');
+    box.innerHTML = fonti ? '<p class="fonti-tit">Da dove l&rsquo;ho preso' + (schede.length ? ' &middot; tocca una scheda per vederla intera' : '') + '</p>' + fonti : '';
+    box.querySelectorAll('.fonte-chip.apri').forEach(b => b.addEventListener('click', () => {
+      renderScheda(schede[Number(b.dataset.i)], true);
+      document.getElementById('c-scheda').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    if ((r.contatti || []).length) renderContatti(r.contatti, false);
+    showGreeting('Ecco la risposta 👇');
+    document.getElementById('c-risposta').classList.add('show');
+    document.getElementById('c-feedback').classList.add('show');
+  }
+  function renderNonTrovato(r){
+    const nome = BRAND_NOMI[r.brand || currentBrand] || '';
+    document.getElementById('c-risposta-tag').textContent = 'Non presente nelle informazioni ' + nome;
+    document.getElementById('c-risposta-testo').innerHTML = testoRicco(r.testo);
+    document.getElementById('c-risposta-fonti').innerHTML = '';
+    renderContatti(r.contatti, true);
+    showGreeting('Su questo non ho una risposta ufficiale: ti giro i riferimenti giusti 👇');
+    document.getElementById('c-risposta').classList.add('show');
+  }
+  // Domanda di chiarimento dell'assistente: la scelta completa la domanda di partenza.
+  function renderChiarimento(r, messaggio){
+    document.getElementById('c-argomento-q').textContent = r.domanda || 'Su cosa ti serve di preciso?';
+    const box = document.getElementById('c-argomento-chips');
+    box.innerHTML = (r.opzioni || []).map(o => '<button type="button" class="chip">' + esc(o) + '</button>').join('');
+    box.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => inviaRichiesta(messaggio + ' (' + b.textContent + ')')));
+    showGreeting('Un attimo, così ti rispondo con precisione 👇');
+    document.getElementById('c-argomento').classList.add('show');
+  }
+  // Piu' schede possibili (metodo classico, quando l'AI non e' disponibile).
+  function renderScelteArgomento(candidati, messaggio){
+    document.getElementById('c-argomento-q').textContent = 'La tua richiesta tocca più argomenti: su quale ti do una mano?';
+    const box = document.getElementById('c-argomento-chips');
+    box.innerHTML = (candidati || []).map(c =>
+      '<button type="button" class="chip" data-id="' + esc(c.id).replace(/"/g, '&quot;') + '">' + esc(c.label) + '</button>').join('');
+    box.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => inviaRichiesta(messaggio, b.dataset.id)));
+    showGreeting('Un attimo: su cosa ti serve di preciso? 👇');
+    document.getElementById('c-argomento').classList.add('show');
+  }
+
+  function renderScheda(sc, daFonte){
     document.getElementById('c-scheda-tag').textContent = sc.etichetta || 'Risposta';
     document.getElementById('c-scheda-tit').textContent = sc.titolo || '';
     const sub = document.getElementById('c-scheda-sub');
     sub.textContent = sc.sottotitolo || ''; sub.style.display = sc.sottotitolo ? '' : 'none';
     document.getElementById('c-scheda-blocchi').innerHTML = blocchiHtml(sc.blocchi);
-    showGreeting('Ecco qua 👇');
     document.getElementById('c-scheda').classList.add('show');
+    if (daFonte) return;
+    showGreeting('Ecco qua 👇');
     document.getElementById('c-feedback').classList.add('show');
   }
   function renderContatti(lista, conFeedback){
@@ -1012,7 +1098,7 @@
   async function inviaRichiesta(messaggio, proceduraId){
     hidePanels();
     const btn = document.getElementById('f-submit');
-    btn.disabled = true; const old = btn.textContent; btn.textContent = 'Sto pensando…';
+    btn.disabled = true; const old = btn.textContent; btn.textContent = 'Cerco nelle informazioni ' + (BRAND_NOMI[currentBrand] || '') + '…';
     let r;
     try { r = await apiPost('/api/ask', { brand: currentBrand, negozio: negozioEl(), messaggio, proceduraId: proceduraId || undefined }); }
     catch { r = { error: 'rete' }; }
@@ -1023,11 +1109,12 @@
 
     if (!r || r.error){ showGreeting('Ops, qualcosa è andato storto. Riprova tra poco 🙏'); return; }
     currentTicketId = r.ticketId || null;
-        // Nome negozio ambiguo: chiedo quale, poi rimando la stessa domanda
-    if (r.type === 'negozio-ambiguo'){ renderScelteNegozio(r.candidati, messaggio); return; }
     // Più argomenti possibili: faccio scegliere, poi rispondo con la procedura scelta
     if (r.type === 'scegli-argomento'){ renderScelteArgomento(r.candidati, messaggio); return; }
-    if (r.type === 'scheda') renderScheda(r.scheda);
+    if (r.type === 'chiarimento'){ renderChiarimento(r, messaggio); return; }
+    if (r.type === 'risposta') renderRisposta(r);
+    else if (r.type === 'non-trovato') renderNonTrovato(r);
+    else if (r.type === 'scheda') renderScheda(r.scheda);
     else if (r.type === 'contatti') renderContatti(r.contatti);
     else if (r.type === 'answer') renderAnswer(r.answer);
     else if (r.type === 'offers') renderOffers(r.offers);

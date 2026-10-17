@@ -24,7 +24,7 @@ import { createHash } from 'node:crypto';
 import { sql } from '../lib/db.js';
 import { verifyRequest, json } from '../lib/auth.js';
 import { invalidaCache } from '../lib/kb.js';
-import { FONTI, FILE_DATI, VERSIONE_REGOLE, costruisciBrand, eseguiFileDati } from '../lib/brand-sync.js';
+import { FONTI, FILE_DATI, VERSIONE_REGOLE, costruisciBrand, eseguiFileDati, dettagliBrand } from '../lib/brand-sync.js';
 
 const PAUSA_MS = 10 * 60 * 1000;   // tra un controllo automatico e l'altro
 
@@ -36,6 +36,12 @@ async function preparaTabella() {
     aggiornato_il  TIMESTAMPTZ,
     esito          TEXT NOT NULL DEFAULT '',
     dettaglio      TEXT NOT NULL DEFAULT ''
+  )`;  // Testo completo delle fonti (offerte con tutte le condizioni e altre info)
+  // che l'assistente legge per rispondere: vedi lib/fonti.js.
+  await sql`CREATE TABLE IF NOT EXISTS fonte_brand (
+    brand         TEXT PRIMARY KEY,
+    dati          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    aggiornato_il TIMESTAMPTZ NOT NULL DEFAULT now()
   )`;
 }
 
@@ -73,8 +79,10 @@ function impronta(testi) {
   return h.digest('hex');
 }
 
-function righeQuery(brand, r) {
+function righeQuery(brand, r, dettagli) {
   const q = [
+    sql`INSERT INTO fonte_brand (brand, dati, aggiornato_il) VALUES (${brand}, ${JSON.stringify(dettagli)}::jsonb, now())
+        ON CONFLICT (brand) DO UPDATE SET dati = EXCLUDED.dati, aggiornato_il = now()`,
     sql`DELETE FROM procedura    WHERE brand = ${brand} AND origine = 'sync'`,
     sql`DELETE FROM offerta      WHERE brand = ${brand} AND origine = 'sync'`,
     sql`DELETE FROM contatto     WHERE brand = ${brand} AND origine = 'sync'`,
@@ -139,7 +147,7 @@ async function allineaBrand(brand, statoPrec, forza) {
     return { brand, esito: 'errore', dettaglio: msg };
   }
 
-  await sql.transaction(righeQuery(brand, r));
+  await sql.transaction(righeQuery(brand, r, dettagliBrand(brand, d)));
   const det = r.voci.length + ' risposte, ' + r.offerte.length + ' offerte, ' + r.contatti.length + ' contatti, ' + r.tipiPratica.length + ' tipi di pratica';
   await segna(brand, { impronta: imp, aggiornato: true, esito: 'aggiornato', dettaglio: det });
   return { brand, esito: 'aggiornato', dettaglio: det };
