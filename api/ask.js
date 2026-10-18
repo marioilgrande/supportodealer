@@ -69,6 +69,9 @@ async function salvaTicket(brand, negozio, categoria, colore, messaggio, rispost
    portale info-utili cambia proprio quelle, si rigenera da sola.
    Le risposte segnate "Risposta OK" in Vista Admin diventano approvate.
    ========================================================================== */
+// Cambiare questo numero quando si cambiano le regole dell'AI: le risposte
+// salvate con le regole vecchie non valgono piu' e si riscrivono.
+const REGOLE_RISPOSTE = 2;
 let memoriaPronta = false;
 async function preparaMemoria() {
   if (memoriaPronta) return;
@@ -89,7 +92,7 @@ async function cercaInMemoria(brand, chiave, fonti) {
   if (!chiave) return null;
   await preparaMemoria();
   const [r] = await sql`SELECT payload, firme, versione FROM risposta_cache WHERE brand = ${brand} AND chiave = ${chiave}`;
-  if (!r) return null;
+  if (!r || !r.payload || r.payload.regole !== REGOLE_RISPOSTE) return null;
   const firme = r.firme || {};
   const ids = Object.keys(firme);
   const valida = ids.length
@@ -164,7 +167,9 @@ async function daFonti(ai, fonti, ctx) {
   }
 
   // esito risposta / contatti: le fonti citate devono esistere davvero
-  const ids = [...new Set((ai.fonti || []).map(String))].filter(id => fonti.perId.has(id)).slice(0, 6);
+  // l'AI a volte scrive "ID: offerta:19" o "[ID: offerta:19]": tengo solo l'id
+  const pulito = (x) => String(x).replace(/^[\s\[]*(ID\s*:\s*)?/i, '').replace(/[\]\s]+$/, '');
+  const ids = [...new Set((ai.fonti || []).map(pulito))].filter(id => fonti.perId.has(id)).slice(0, 10);
   if (!ids.length) return null;
   const citate = ids.map(id => fonti.perId.get(id));
   const testo = String(ai.risposta || '').trim();
@@ -212,7 +217,7 @@ async function invia(out, ctx, chiave) {
     extra = { ticketId: t.id, codice: t.codice };
   }
   if (out.memoria) {
-    try { await salvaInMemoria(brand, chiave, { corpo: out.corpo, ticket: out.ticket || null }, out.memoria.firme, out.memoria.versione); }
+    try { await salvaInMemoria(brand, chiave, { regole: REGOLE_RISPOSTE, corpo: out.corpo, ticket: out.ticket || null }, out.memoria.firme, out.memoria.versione); }
     catch { /* la memoria e' un di piu' */ }
   }
   return json(Object.assign({}, out.corpo, extra));
