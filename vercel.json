@@ -32,6 +32,9 @@
   "functions": {
     "api/sync.js": {
       "maxDuration": 60
+    },
+    "api/bolletta.js": {
+      "maxDuration": 60
     }
   },
   "crons": [

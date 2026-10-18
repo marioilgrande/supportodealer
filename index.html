@@ -1208,10 +1208,11 @@
     const hint = document.getElementById('allegati-hint');
     if (!file){ hint.textContent = 'Prima allega il PDF della bolletta.'; hint.classList.add('warn'); return; }
     if (!/pdf/i.test(file.type) && !/\.pdf$/i.test(file.name)){ hint.textContent = 'Serve un file PDF: carica il PDF originale del fornitore, non una foto.'; hint.classList.add('warn'); return; }
-    if (file.size > 8 * 1024 * 1024){ hint.textContent = 'Il file è troppo grande (max 8 MB).'; hint.classList.add('warn'); return; }
+    // il server accetta al massimo 4,5 MB di richiesta e il PDF viaggia in base64 (+33%)
+    if (file.size > 3.3 * 1024 * 1024){ hint.textContent = 'Il PDF è troppo grande (massimo 3 MB). Le bollette originali del fornitore di solito pesano molto meno: controlla di non aver caricato una scansione.'; hint.classList.add('warn'); return; }
 
     const btn = document.getElementById('f-analizza');
-    btn.disabled = true; const old = btn.textContent; btn.textContent = 'Sto leggendo la bolletta…';
+    btn.disabled = true; const old = btn.textContent; btn.textContent = 'Sto leggendo la bolletta… (fino a 30 secondi)';
     let r;
     try {
       const pdf = await leggiPdfBase64(file);

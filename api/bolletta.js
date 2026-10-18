@@ -3,7 +3,8 @@ import { sql, codiceTicket } from '../lib/db.js';
 import { estraiBolletta } from '../lib/gemini.js';
 import { isBrand, BRANDS } from '../lib/kb.js';
 
-export const config = { runtime: 'edge' };
+// Funzione Node (non Edge): leggere un PDF con l'AI puo' richiedere 20-30 secondi,
+// oltre il limite di 25 s delle funzioni Edge. Qui il limite e' 60 s (vercel.json).
 
 // Il comparatore ACEA (fonte unica delle formule/indici). Il portale NON calcola
 // nulla: legge i dati dalla bolletta e apre QUESTO comparatore già compilato.
@@ -26,8 +27,7 @@ const num = (v) => {
   return isFinite(n) ? n : 0;
 };
 
-export default async function handler(request) {
-  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
 
@@ -95,8 +95,9 @@ export default async function handler(request) {
   };
 
   // 4) Log ticket (best effort: se il DB non c'è, l'analisi funziona lo stesso)
+  //    In anteprima (mai in produzione) le prove con prova:true non lasciano traccia.
   let ticketId = null, codice = '';
-  try {
+  if (!(process.env.VERCEL_ENV !== 'production' && body.prova === true)) try {
     const nomeNeg = negozioInput || '—';
     const parti = [];
     if (riepilogo.gas) parti.push(`gas ${riepilogo.gas.smc} Smc, attuale ${riepilogo.gas.costoAttuale.toFixed(2)} €`);
