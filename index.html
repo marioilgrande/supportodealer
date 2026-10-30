@@ -499,6 +499,19 @@
   .btn-annulla { font-family: inherit; font-size: 0.8rem; font-weight: 700; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
   .corr-msg { font-size: 0.78rem; color: var(--ink-soft); }
 
+  /* trascina in basso per aggiornare: il nostro, uguale nel browser e nell'app
+     installata (dove il telefono non lo fa da solo); quello di Chrome si spegne */
+  html { overscroll-behavior-y: contain; }
+  .ptr { position: fixed; top: 0; left: 50%; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--paper-raised); color: var(--accent);
+    box-shadow: 0 4px 14px rgba(0,0,0,.18); transform: translate(-50%, -60px); opacity: 0; pointer-events: none;
+    margin-top: env(safe-area-inset-top); }
+  .ptr.torna { transition: transform .2s ease, opacity .2s ease; }
+  .ptr-freccia { font-size: 1.25rem; font-weight: 800; line-height: 1; transition: transform .15s ease; }
+  .ptr.pronto .ptr-freccia { transform: rotate(180deg); }
+  .ptr.carica .ptr-freccia { animation: ptr-giro .7s linear infinite; }
+  @keyframes ptr-giro { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
   /* invito a installare l'app */
   .installa { display: flex; align-items: center; gap: 10px; margin: -8px 0 18px; padding: 10px 10px 10px 12px;
     border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
@@ -537,6 +550,9 @@
     .stat-strip { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
+
+<!-- trascina in basso per aggiornare -->
+<div class="ptr" id="ptr" aria-hidden="true"><span class="ptr-freccia">&darr;</span></div>
 
 <div class="shell">
   <div class="masthead">
@@ -1932,6 +1948,59 @@
   // Allineamento automatico con i portali info utili: parte in background,
   // al massimo ogni 10 minuti (lo decide il server). Il dealer non aspetta nulla.
   setTimeout(() => { fetch('/api/sync').catch(() => {}); }, 1500);
+
+  // ------- Trascina in basso per aggiornare -------
+  (function trascinaPerAggiornare(){
+    const ind = document.getElementById('ptr');
+    const SOGLIA = 70;          // px di trascinamento (gia' smorzato) per aggiornare
+    let y0 = null, tirato = 0;
+    // non parte se il dito e' su un riquadro che scorre per conto suo (tabelle, testi lunghi)
+    const dentroScorrevole = (el) => {
+      for (; el && el !== document.body; el = el.parentElement) {
+        if (el.scrollTop > 0) return true;
+      }
+      return false;
+    };
+    const azzera = () => {
+      ind.classList.add('torna'); ind.classList.remove('pronto');
+      ind.style.transform = ''; ind.style.opacity = '';
+      setTimeout(() => ind.classList.remove('torna'), 220);
+      y0 = null; tirato = 0;
+    };
+    addEventListener('touchstart', (e) => {
+      const tour = document.getElementById('tour');
+      if (window.scrollY > 0 || e.touches.length !== 1 || (tour && !tour.hidden) || dentroScorrevole(e.target)) { y0 = null; return; }
+      y0 = e.touches[0].clientY; tirato = 0;
+    }, { passive: true });
+    addEventListener('touchmove', (e) => {
+      if (y0 === null) return;
+      const dy = e.touches[0].clientY - y0;
+      if (dy <= 0 || window.scrollY > 0) { if (tirato) azzera(); else y0 = null; return; }
+      tirato = Math.min(dy * 0.5, 120);
+      ind.style.transform = 'translate(-50%, ' + (tirato - 50) + 'px)';
+      ind.style.opacity = String(Math.min(1, tirato / 50));
+      ind.classList.toggle('pronto', tirato >= SOGLIA);
+    }, { passive: true });
+    addEventListener('touchend', () => {
+      if (y0 === null || !tirato) { y0 = null; return; }
+      if (tirato >= SOGLIA) {
+        ind.classList.remove('pronto'); ind.classList.add('carica');
+        ind.style.transform = 'translate(-50%, 16px)';
+        // dopo l'aggiornamento si riparte dalla stessa vista e dallo stesso brand
+        try { sessionStorage.setItem('sd_ripristina', JSON.stringify({
+          vista: document.querySelector('.tabs button.active')?.dataset.view || 'form', brand: currentBrand || '' })); } catch {}
+        location.reload();
+      } else azzera();
+    });
+    addEventListener('touchcancel', () => { if (tirato) azzera(); y0 = null; });
+  })();
+  (function ripristinaDopoAggiornamento(){
+    let st = null;
+    try { st = JSON.parse(sessionStorage.getItem('sd_ripristina') || 'null'); sessionStorage.removeItem('sd_ripristina'); } catch {}
+    if (!st) return;
+    if (st.brand) document.querySelector('#brand-pick [data-brand="' + st.brand + '"]')?.click();
+    if (st.vista === 'dash') document.querySelector('.tabs button[data-view="dash"]')?.click();
+  })();
 
   // ------- App installabile -------
   if ('serviceWorker' in navigator) {
