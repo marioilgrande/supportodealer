@@ -92,9 +92,15 @@ async function cercaInMemoria(brand, chiave, fonti) {
   if (!chiave) return null;
   await preparaMemoria();
   const [r] = await sql`SELECT payload, firme, versione FROM risposta_cache WHERE brand = ${brand} AND chiave = ${chiave}`;
-  if (!r || !r.payload || r.payload.regole !== REGOLE_RISPOSTE) return null;
+  if (!r || !r.payload) return null;
+  const manuale = r.payload.manuale === true;            // risposta corretta da Mario
+  if (!manuale && r.payload.regole !== REGOLE_RISPOSTE) return null;
   const firme = r.firme || {};
   const ids = Object.keys(firme);
+  if (manuale && !ids.length) {                          // senza scheda: vale sempre
+    await sql`UPDATE risposta_cache SET usi = usi + 1 WHERE brand = ${brand} AND chiave = ${chiave}`;
+    return r.payload;
+  }
   const valida = ids.length
     ? ids.every(id => fonti.perId.has(id) && firma(fonti.perId.get(id).testo) === firme[id])
     : r.versione === fonti.versione;               // domande di chiarimento: tutto il portale

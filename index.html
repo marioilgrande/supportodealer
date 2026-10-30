@@ -481,6 +481,24 @@
   .sync-riga .esito.na { background: var(--line); color: var(--ink-soft); }
   .sync-riga .det { color: var(--ink-soft); }
 
+  /* Vista Admin: risposta data e correzione */
+  .risp-data { margin: -4px 0 9px; font-size: 0.8rem; color: var(--ink-soft); }
+  .risp-data summary { cursor: pointer; font-weight: 700; color: var(--accent-ink); }
+  .risp-data div { margin-top: 5px; padding: 7px 9px; border-radius: 7px; background: var(--paper); white-space: pre-line; line-height: 1.45; max-height: 180px; overflow: auto; }
+  .risp-data.corretta summary { color: var(--sev-green); }
+  .corr-box { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .corr-box[hidden] { display: none; }
+  .corr-lab { display: block; font-size: 0.78rem; font-weight: 800; margin-bottom: 5px; }
+  .corr-lab span, .corr-chk span { font-weight: 500; color: var(--ink-soft); }
+  .corr-box textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper);
+    color: var(--ink); font-family: inherit; font-size: 0.86rem; line-height: 1.45; resize: vertical; }
+  .corr-chk { display: block; font-size: 0.78rem; margin: 8px 0; line-height: 1.4; }
+  .corr-chk input { margin: 0 4px 0 0; vertical-align: -2px; }
+  .corr-azioni { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .corr-azioni .btn-save { padding: 7px 12px; font-size: 0.8rem; }
+  .btn-annulla { font-family: inherit; font-size: 0.8rem; font-weight: 700; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
+  .corr-msg { font-size: 0.78rem; color: var(--ink-soft); }
+
   /* invito a installare l'app */
   .installa { display: flex; align-items: center; gap: 10px; margin: -8px 0 18px; padding: 10px 10px 10px 12px;
     border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
@@ -1041,7 +1059,7 @@
     if (lista) html += '</ul>';
     return html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
   }
-  const ICONA_FONTE = { scheda: '📄', offerta: '🏷️', contatto: '📞', info: 'ℹ️' };
+  const ICONA_FONTE = { scheda: '📄', offerta: '🏷️', contatto: '📞', info: 'ℹ️', verificata: '✅' };
   function renderRisposta(r){
     const nome = BRAND_NOMI[r.brand || currentBrand] || '';
     // Senza testo (AI non disponibile o testo scartato dal controllo): restano le
@@ -1545,7 +1563,8 @@
     document.getElementById('stat-ok').textContent = pct + '%';
 
     const cols = { rosso: [], giallo: [], verde: [] };
-    (data.tickets||[]).forEach(t => { (cols[t.colore] || cols.giallo).push(t); });
+    TICKETS.clear();
+    (data.tickets||[]).forEach(t => { TICKETS.set(Number(t.id), t); (cols[t.colore] || cols.giallo).push(t); });
     const colDef = [['rosso','Rosso — Urgente'],['giallo','Giallo — Media'],['verde','Verde — Non urgente']];
     board.innerHTML = colDef.map(([key,label]) => {
       const items = cols[key];
@@ -1557,6 +1576,7 @@
     }).join('');
     board.querySelectorAll('.review-btns button').forEach(b => {
       b.addEventListener('click', async () => {
+        if (b.dataset.edit === '1'){ apriCorrezione(b.dataset.id); return; }
         if (b.dataset.del === '1'){
           if (!confirm('Eliminare definitivamente questa richiesta?')) return;
           await authFetch('/api/tickets?id=' + encodeURIComponent(b.dataset.id), { method:'DELETE' });
@@ -1581,12 +1601,50 @@
       <span class="ticket-cat" style="background:var(${softMap[key]}); color:var(${varMap[key]})">${esc(t.categoria)}</span>
       ${t.tipo_pratica ? `<span class="ticket-cat" style="background:var(--accent-soft); color:var(--accent-ink)">${esc(t.tipo_pratica)}</span>` : ''}
       <p class="ticket-note">${esc(t.messaggio)}</p>
+      ${rispostaData(t)}
       <div class="ticket-bottom">
         <span class="status-pill ${cls}">${label}</span>
-        <div class="review-btns"><button title="Risposta OK" data-id="${t.id}" data-ok="1">✓</button><button title="Da migliorare" data-id="${t.id}" data-ok="0">✕</button><button class="btn-trash" title="Elimina richiesta" data-id="${t.id}" data-del="1">🗑</button></div>
+        <div class="review-btns">${correggibile(t) ? `<button class="btn-edit" title="Correggi la risposta" data-id="${t.id}" data-edit="1">✏️</button>` : ''}<button title="Risposta OK" data-id="${t.id}" data-ok="1">✓</button><button title="Da migliorare" data-id="${t.id}" data-ok="0">✕</button><button class="btn-trash" title="Elimina richiesta" data-id="${t.id}" data-del="1">🗑</button></div>
       </div>
+      <div class="corr-box" id="corr-${t.id}" hidden></div>
     </article>`;
   }
+  // Risposta data dal portale (o quella corretta da Mario), richiudibile.
+  const pulisciRisposta = (x) => String(x || '').replace(/\n?\[fonti:[^\]]*\]\s*$/, '').trim();
+  function correggibile(t){ return t.brand && !/analisi bolletta/i.test(t.categoria || ''); }
+  function rispostaData(t){
+    if (t.risposta_corretta) return '<details class="risp-data corretta"><summary>✏️ Risposta corretta da te</summary><div>' + esc(t.risposta_corretta) + '</div></details>';
+    const r = pulisciRisposta(t.risposta_ai);
+    if (!r || !correggibile(t)) return '';
+    return '<details class="risp-data"><summary>Risposta data</summary><div>' + esc(r) + '</div></details>';
+  }
+  const TICKETS = new Map();   // id -> richiesta, per precompilare la correzione
+  function apriCorrezione(id){
+    const t = TICKETS.get(Number(id)); if (!t) return;
+    const box = document.getElementById('corr-' + id);
+    if (!box.hidden){ box.hidden = true; return; }
+    const nonTrovata = /non trovato/i.test(t.categoria || '');
+    const base = t.risposta_corretta || (nonTrovata ? '' : pulisciRisposta(t.risposta_ai));
+    box.innerHTML = '<label class="corr-lab">Risposta corretta <span>la riceverà subito chi fa questa domanda su ' + esc(BRAND_NOME[t.brand] || '') + '</span></label>' +
+      '<textarea rows="5" placeholder="Scrivi la risposta giusta, come la daresti tu al dealer. Puoi usare righe che iniziano con - per un elenco e **grassetto**.">' + esc(base) + '</textarea>' +
+      '<label class="corr-chk"><input type="checkbox" checked> Usala anche per domande simili <span>(diventa una scheda nei Contenuti, che puoi modificare o eliminare)</span></label>' +
+      '<div class="corr-azioni"><button type="button" class="btn-save">Salva risposta</button><button type="button" class="btn-annulla">Annulla</button><span class="corr-msg"></span></div>';
+    box.hidden = false;
+    const ta = box.querySelector('textarea'); ta.focus();
+    box.querySelector('.btn-annulla').onclick = () => { box.hidden = true; };
+    box.querySelector('.btn-save').onclick = async (e) => {
+      const msg = box.querySelector('.corr-msg');
+      const testo = ta.value.trim();
+      if (testo.length < 3){ msg.textContent = 'Scrivi la risposta.'; return; }
+      e.currentTarget.disabled = true; msg.textContent = 'Salvo…';
+      let r = null;
+      try { r = await (await authFetch('/api/correggi', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ticketId: Number(id), testo, simili: box.querySelector('.corr-chk input').checked }) })).json(); } catch {}
+      if (r && r.ok){ msg.textContent = '✅ Salvata: da ora risponde così.'; setTimeout(loadDashboard, 900); }
+      else { msg.textContent = 'Non salvata: ' + ((r && r.error) || 'controlla la connessione'); e.currentTarget.disabled = false; }
+    };
+  }
+
   function timeago(iso){
     const d = new Date(iso); const m = Math.floor((Date.now()-d.getTime())/60000);
     if (m < 1) return 'ora'; if (m < 60) return m+' min fa';

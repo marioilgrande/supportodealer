@@ -4,17 +4,27 @@ import { chiaveDomanda } from '../lib/fonti.js';
 
 export const config = { runtime: 'edge' };
 
+// Colonna con la risposta corretta da Mario (api/correggi.js): si crea da sola.
+let colonnaPronta = false;
+async function colonnaCorretta() {
+  if (colonnaPronta) return;
+  await sql`ALTER TABLE ticket ADD COLUMN IF NOT EXISTS risposta_corretta TEXT`;
+  colonnaPronta = true;
+}
+
 // Dashboard admin (protetta): elenco ticket + validazione risposta.
 export default async function handler(request) {
   const session = await verifyRequest(request);
   if (!session) return json({ error: 'Non autorizzato' }, 401);
 
   try {
+    await colonnaCorretta();
     if (request.method === 'GET') {
       const rows = await sql`
         SELECT id, codice, brand, negozio, sis_sub, agenzia, categoria, colore,
                messaggio, esito, cf_cliente, num_opportunity, nota_controllo,
-               tipo_pratica, risposta_ok, created_at
+               tipo_pratica, risposta_ok, created_at,
+               LEFT(risposta_ai, 1500) AS risposta_ai, risposta_corretta
         FROM ticket
         ORDER BY created_at DESC
         LIMIT 200
