@@ -2,8 +2,18 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Supporto Dealer On Line</title>
+<!-- app installabile (PWA) -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1b2a38">
+<link rel="icon" href="/assets/icone/icona.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/icone/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icone/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Supporto Dealer">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   *,*::before,*::after{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -471,6 +481,19 @@
   .sync-riga .esito.na { background: var(--line); color: var(--ink-soft); }
   .sync-riga .det { color: var(--ink-soft); }
 
+  /* invito a installare l'app */
+  .installa { display: flex; align-items: center; gap: 10px; margin: -8px 0 18px; padding: 10px 10px 10px 12px;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+  .installa[hidden] { display: none; }
+  .installa img { border-radius: 10px; flex: none; }
+  .installa-txt { flex: 1; min-width: 0; font-size: 0.8rem; line-height: 1.35; color: var(--ink-soft); }
+  .installa-txt > b { display: block; color: var(--ink); font-size: 0.86rem; }
+  .installa-btn { flex: none; border: none; border-radius: 8px; padding: 8px 12px; font-family: inherit; font-size: 0.82rem;
+    font-weight: 800; color: #fff; background: var(--hero); cursor: pointer; }
+  .installa-btn[hidden] { display: none; }
+  .installa-chiudi { flex: none; border: none; background: transparent; color: var(--ink-soft); font-size: 1.2rem; line-height: 1;
+    padding: 4px 6px; cursor: pointer; }
+
   /* risposta scritta dalle fonti */
   .risposta-testo { font-size: 0.93rem; line-height: 1.55; }
   .risposta-testo p { margin: 0 0 6px; }
@@ -523,6 +546,14 @@
           </div>
           <h2>Ciao! <span class="wave">👋</span> Come posso aiutarti?</h2>
           <p class="sub">Scrivimi di cosa hai bisogno con parole tue: cerco di darti subito la risposta giusta. Se serve, ti faccio inviare una segnalazione a Mario.</p>
+
+          <!-- invito a installare l'app: compare solo dove si puo' installare -->
+          <div class="installa" id="installa" hidden>
+            <img src="assets/icone/icon-192.png" alt="" width="40" height="40">
+            <div class="installa-txt"><b>Installa l&rsquo;app</b><span id="installa-testo">Aprila con un tocco dalla Home.</span></div>
+            <button type="button" class="installa-btn" id="installa-btn">Installa</button>
+            <button type="button" class="installa-chiudi" id="installa-chiudi" aria-label="Non ora">&times;</button>
+          </div>
 
           <div class="field">
             <span class="label-text">Di quale brand hai bisogno?</span>
@@ -1843,6 +1874,43 @@
   // Allineamento automatico con i portali info utili: parte in background,
   // al massimo ogni 10 minuti (lo decide il server). Il dealer non aspetta nulla.
   setTimeout(() => { fetch('/api/sync').catch(() => {}); }, 1500);
+
+  // ------- App installabile -------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+  }
+  (function invitoInstallazione(){
+    const box = document.getElementById('installa');
+    const btn = document.getElementById('installa-btn');
+    const giaApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    let rimandato = false;
+    try { rimandato = Date.now() - Number(localStorage.getItem('sd_installa_no') || 0) < 14 * 864e5; } catch {}
+    if (giaApp || rimandato) return;
+
+    let richiesta = null;
+    // Android e Chrome/Edge da computer: il browser ci passa la richiesta di installazione
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault(); richiesta = e;
+      btn.hidden = false; box.hidden = false;
+    });
+    btn.addEventListener('click', async () => {
+      if (!richiesta) return;
+      richiesta.prompt();
+      try { await richiesta.userChoice; } catch {}
+      richiesta = null; box.hidden = true;
+    });
+    window.addEventListener('appinstalled', () => { box.hidden = true; });
+    // iPhone/iPad: Safari non ha il tasto, si installa da Condividi
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) {
+      document.getElementById('installa-testo').innerHTML = 'Tocca <b>Condividi</b> <span aria-hidden="true">&#x2B06;&#xFE0E;</span> e poi <b>Aggiungi alla schermata Home</b>.';
+      btn.hidden = true; box.hidden = false;
+    }
+    document.getElementById('installa-chiudi').addEventListener('click', () => {
+      box.hidden = true;
+      try { localStorage.setItem('sd_installa_no', String(Date.now())); } catch {}
+    });
+  })();
 </script>
 
 </html>

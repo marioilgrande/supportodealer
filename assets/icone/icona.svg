@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2a38"/>
+      <stop offset="1" stop-color="#34495e"/>
+    </linearGradient>
+    <linearGradient id="fulmine" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#95C11F"/>
+      <stop offset="0.5" stop-color="#009E62"/>
+      <stop offset="1" stop-color="#12a3a8"/>
+    </linearGradient>
+  </defs>
+  <!-- fondo pieno: va bene anche come icona "maskable" (Android ritaglia la forma) -->
+  <rect width="512" height="512" fill="url(#fondo)"/>
+  <!-- fumetto della chat = supporto -->
+  <path d="M168 132h176a56 56 0 0 1 56 56v104a56 56 0 0 1-56 56H236l-62 48a8 8 0 0 1-13-6v-42h7a56 56 0 0 1-56-56V188a56 56 0 0 1 56-56z" fill="#ffffff"/>
+  <!-- fulmine = energia, nei colori dei tre brand -->
+  <path d="M276 150l-86 112h56l-22 84 92-120h-58z" fill="url(#fulmine)"/>
+  <!-- fascia dei tre brand: Plenitude, Sorgenia, Alperia -->
+  <clipPath id="barra"><rect x="166" y="404" width="180" height="14" rx="7"/></clipPath>
+  <g clip-path="url(#barra)">
+    <rect x="166" y="404" width="60" height="14" fill="#009E62"/>
+    <rect x="226" y="404" width="60" height="14" fill="#95C11F"/>
+    <rect x="286" y="404" width="60" height="14" fill="#12a3a8"/>
+  </g>
+</svg>
