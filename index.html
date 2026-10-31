@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Supporto Dealer On Line</title>
 <!-- app installabile (PWA) -->
 <link rel="manifest" href="/manifest.webmanifest">
@@ -502,6 +502,13 @@
   /* trascina in basso per aggiornare: il nostro, uguale nel browser e nell'app
      installata (dove il telefono non lo fa da solo); quello di Chrome si spegne */
   html { overscroll-behavior-y: contain; }
+
+  /* niente zoom sul telefono: ne' pizzicando, ne' col doppio tocco, ne' quando
+     si tocca un campo (iPhone ingrandisce i campi con testo sotto i 16px) */
+  html { touch-action: pan-x pan-y; }
+  @media (pointer: coarse) {
+    input, select, textarea { font-size: 16px !important; }
+  }
   .ptr { position: fixed; top: 0; left: 50%; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
     display: grid; place-items: center; background: var(--paper-raised); color: var(--accent);
     box-shadow: 0 4px 14px rgba(0,0,0,.18); transform: translate(-50%, -60px); opacity: 0; pointer-events: none;
@@ -1948,6 +1955,11 @@
   // Allineamento automatico con i portali info utili: parte in background,
   // al massimo ogni 10 minuti (lo decide il server). Il dealer non aspetta nulla.
   setTimeout(() => { fetch('/api/sync').catch(() => {}); }, 1500);
+
+  // ------- Niente zoom sul telefono -------
+  // Safari su iPhone ignora user-scalable=no: il pizzico si ferma qui.
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
   // ------- Trascina in basso per aggiornare -------
   (function trascinaPerAggiornare(){
